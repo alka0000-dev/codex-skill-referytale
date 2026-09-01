@@ -283,6 +283,14 @@ referytale/
 
 このディレクトリは、そのままGitHubリポジトリのルートとして利用できます。
 
+## 名前の由来
+
+`ReferyTale` は、`referent`（指示対象）／`refer`（指し示す）と、`fairy tale`（おとぎ話）を重ねた造語です。
+
+AIが、何を指すのかを確かめる前にもっともらしい独自語を作り、後から意味を合わせてしまう問題を防ぎたい。名前より先に、その語が指す対象と、そこへ至る根拠や経緯を「小さな物語」として明らかにできたら。そんな思いから、ReferyTaleと名付けました。
+
+ここでいう `tale` は、意味を後付けする作り話ではありません。名前より先に明らかにする、指示対象と根拠・経緯を表しています。冒頭の `Before the name, there is a tale.` にも、この考えを込めています。
+
 ## License
 
 ReferyTale is licensed under the [MIT License](LICENSE).
