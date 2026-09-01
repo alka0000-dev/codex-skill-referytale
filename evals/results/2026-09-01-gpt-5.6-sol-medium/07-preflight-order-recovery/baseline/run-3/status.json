@@ -1,0 +1,15 @@
+{
+  "fixture": "07-preflight-order-recovery",
+  "mode": "baseline",
+  "run": 3,
+  "success": true,
+  "turns": [
+    {
+      "turn": 1,
+      "started_at": "2026-09-01T08:33:43Z",
+      "finished_at": "2026-09-01T08:36:54Z",
+      "exit_status": 0,
+      "thread_id_recorded": true
+    }
+  ]
+}

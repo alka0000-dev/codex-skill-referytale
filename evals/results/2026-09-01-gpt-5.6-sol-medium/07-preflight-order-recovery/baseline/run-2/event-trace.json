@@ -1,0 +1,51 @@
+[
+  {
+    "sequence": 14,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 14,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": "docs/maintenance-mode-start-design.md"
+  },
+  {
+    "sequence": 22,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".codex/referent-tables/maintenance-mode-start.md"
+  },
+  {
+    "sequence": 24,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/maintenance-mode-start.md"
+  },
+  {
+    "sequence": 26,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 26,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": "docs/maintenance-mode-start-design.md"
+  },
+  {
+    "sequence": 28,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".agent/CONTINUITY.md"
+  }
+]

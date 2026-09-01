@@ -1,0 +1,35 @@
+[
+  {
+    "sequence": 16,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 16,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".codex/referent-tables/referent-table-billing-retry-identifiers.md"
+  },
+  {
+    "sequence": 21,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-billing-retry-identifiers.md"
+  },
+  {
+    "sequence": 26,
+    "turn": 1,
+    "event": "phase2_observed"
+  },
+  {
+    "sequence": 28,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".agent/CONTINUITY.md"
+  }
+]

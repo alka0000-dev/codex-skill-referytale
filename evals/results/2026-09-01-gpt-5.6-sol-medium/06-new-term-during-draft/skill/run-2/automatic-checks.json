@@ -1,0 +1,15 @@
+{
+  "fixture": "06-new-term-during-draft",
+  "mode": "skill",
+  "run": 2,
+  "execution_success": true,
+  "prompt_sha256": "b7cfc582de981aea58884efc4c0b6360fbb0e0291e2b139dac40617f7f40c7b7",
+  "referent_table_count": 1,
+  "skill_invocation_observed": true,
+  "phase1_snapshot_observed": true,
+  "phase2_observed": true,
+  "g1_preflight_order_observed": true,
+  "g2_phase_separation_observed": true,
+  "semantic_validation_mentioned": true,
+  "turn_2_referent_changes_before_final": 2
+}

@@ -1,0 +1,40 @@
+[
+  {
+    "sequence": 13,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".codex/referent-tables/referent-table-file-open-permission-investigation.md"
+  },
+  {
+    "sequence": 16,
+    "turn": 1,
+    "event": "phase1_snapshot_observed"
+  },
+  {
+    "sequence": 18,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-file-open-permission-investigation.md"
+  },
+  {
+    "sequence": 20,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-file-open-permission-investigation.md"
+  },
+  {
+    "sequence": 22,
+    "turn": 1,
+    "event": "phase2_observed"
+  },
+  {
+    "sequence": 24,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".agent/CONTINUITY.md"
+  }
+]

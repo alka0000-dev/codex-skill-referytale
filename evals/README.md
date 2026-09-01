@@ -2,6 +2,17 @@
 
 このevalは、`referytale` なしのbaselineと、skillを適用したrunを同じ入力で比較します。特定の名称を生成できたかではなく、名称より先に指示対象を分離できたかを評価します。このリポジトリでは7件のfixtureを使用します。
 
+## 公開済みの検証結果
+
+2026-09-01に、Codex CLI `0.152.0`、モデル `gpt-5.6-sol`、reasoning effort `medium` で42回の独立比較を実施しました。
+
+- 実行成功: 42 / 42
+- 厳格合格: baseline 0 / 21、skill 17 / 21
+- 対象本文より先のPhase 1保存: baseline 0 / 21、skill 21 / 21
+- Phase 1とPhase 2の分離を実行履歴から確認: baseline 0 / 21、skill 20 / 21
+
+4件の不合格を含む採点と実行証拠は、[2026-09-01-gpt-5.6-sol-mediumの検証結果](results/2026-09-01-gpt-5.6-sol-medium/README.md) で確認できます。
+
 ## 比較条件
 
 - 同じCodex 5.6系モデル、同じreasoning effort、同じプロジェクト指示を使う。
@@ -21,6 +32,48 @@
 5. 新しい一時作業領域でskill runを行う。`$referytale` を明示し、それ以外の入力と設定は変えない。
 6. fixture固有の合格条件と共通rubricで採点する。
 7. 同じfixtureのbaselineとskill runを比較し、失敗署名が減ったかを確認する。
+
+## 42回を自動実行する
+
+自動実行には、認証済みのCodex CLI、Ruby、実行するモデルへのアクセス権が必要です。リポジトリルートから次を実行します。`--output` には、公開リポジトリ外の新しい空ディレクトリを指定してください。
+
+```sh
+ruby evals/scripts/run-regression.rb \
+  --skill-path SKILL.md \
+  --output ../referytale-eval-raw/2026-09-01-gpt-5.6-sol-medium \
+  --model gpt-5.6-sol \
+  --effort medium \
+  --runs 3 \
+  --concurrency 2
+```
+
+このコマンドは、7 fixture × 2条件 × 3回の42件を作ります。各runは別の空の作業領域を使います。baselineでは指定したReferyTaleを無効化し、skill条件だけで有効化します。2 turnのfixtureでは、同じrunの会話だけを継続します。
+
+ほかの個人用skillが評価へ影響し得る場合は、その `SKILL.md` を `--disable-skill` で両条件から外します。このオプションは必要な数だけ繰り返せます。
+
+```sh
+ruby evals/scripts/run-regression.rb \
+  --skill-path SKILL.md \
+  --disable-skill /absolute/path/to/another-skill/SKILL.md \
+  --output ../referytale-eval-raw/isolated-run \
+  --model gpt-5.6-sol \
+  --effort medium \
+  --runs 3
+```
+
+中断後に成功済みrunを残して再開する場合は、同じ出力先へ `--skip-existing-success` を追加します。成功済み件数はmanifestへ記録されます。
+
+### 公開用の証拠を作る
+
+生のイベント記録には端末固有の絶対パスが含まれるため、そのままGitHubへ置きません。実行後、次のスクリプトで採点に必要な情報だけを相対パスへ変換します。出力先は存在しない新しいディレクトリにしてください。
+
+```sh
+ruby evals/scripts/build-evidence.rb \
+  --raw ../referytale-eval-raw/2026-09-01-gpt-5.6-sol-medium \
+  --output evals/results/2026-09-01-gpt-5.6-sol-medium
+```
+
+生成先には、実行条件、成功件数、入力、最終応答、ワークスペース成果物、Phase 1スナップショット、順序を示すイベント記録、機械確認値が保存されます。G3〜G7とfixture固有条件は人が確認し、[results-template.md](results-template.md) の形式で採点します。
 
 ## 共通rubric
 

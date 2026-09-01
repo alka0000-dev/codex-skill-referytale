@@ -1,0 +1,22 @@
+{
+  "fixture": "06-new-term-during-draft",
+  "mode": "skill",
+  "run": 1,
+  "success": true,
+  "turns": [
+    {
+      "turn": 1,
+      "started_at": "2026-09-01T08:19:22Z",
+      "finished_at": "2026-09-01T08:27:25Z",
+      "exit_status": 0,
+      "thread_id_recorded": true
+    },
+    {
+      "turn": 2,
+      "started_at": "2026-09-01T08:27:25Z",
+      "finished_at": "2026-09-01T08:29:23Z",
+      "exit_status": 0,
+      "thread_id_recorded": true
+    }
+  ]
+}

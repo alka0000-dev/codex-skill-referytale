@@ -1,0 +1,58 @@
+[
+  {
+    "sequence": 10,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 10,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": "rollout-design.md"
+  },
+  {
+    "sequence": 15,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 15,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": "rollout-design.md"
+  },
+  {
+    "sequence": 19,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": "rollout-design.md"
+  },
+  {
+    "sequence": 37,
+    "turn": 2,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 37,
+    "turn": 2,
+    "event": "file_change",
+    "kind": "update",
+    "path": "rollout-design.md"
+  },
+  {
+    "sequence": 42,
+    "turn": 2,
+    "event": "file_change",
+    "kind": "update",
+    "path": "rollout-design.md"
+  }
+]

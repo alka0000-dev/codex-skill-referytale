@@ -1,0 +1,15 @@
+{
+  "fixture": "02-cache-failure-isolation",
+  "mode": "skill",
+  "run": 1,
+  "success": true,
+  "turns": [
+    {
+      "turn": 1,
+      "started_at": "2026-09-01T08:03:11Z",
+      "finished_at": "2026-09-01T08:04:56Z",
+      "exit_status": 0,
+      "thread_id_recorded": true
+    }
+  ]
+}

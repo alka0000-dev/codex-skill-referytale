@@ -1,0 +1,15 @@
+{
+  "fixture": "07-preflight-order-recovery",
+  "mode": "baseline",
+  "run": 3,
+  "execution_success": true,
+  "prompt_sha256": "d3ffc20f34eaadc992524e389cd5d3815a2a75395cd483b8fe6082f2193764c2",
+  "referent_table_count": 0,
+  "skill_invocation_observed": false,
+  "phase1_snapshot_observed": false,
+  "phase2_observed": false,
+  "g1_preflight_order_observed": false,
+  "g2_phase_separation_observed": false,
+  "semantic_validation_mentioned": false,
+  "turn_2_referent_changes_before_final": null
+}

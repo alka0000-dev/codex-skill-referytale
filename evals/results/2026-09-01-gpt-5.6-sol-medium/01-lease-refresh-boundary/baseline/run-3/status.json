@@ -1,0 +1,15 @@
+{
+  "fixture": "01-lease-refresh-boundary",
+  "mode": "baseline",
+  "run": 3,
+  "success": true,
+  "turns": [
+    {
+      "turn": 1,
+      "started_at": "2026-09-01T07:59:28Z",
+      "finished_at": "2026-09-01T08:01:38Z",
+      "exit_status": 0,
+      "thread_id_recorded": true
+    }
+  ]
+}

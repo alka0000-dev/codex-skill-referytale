@@ -1,0 +1,30 @@
+[
+  {
+    "sequence": 8,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 8,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": "docs/maintenance-mode-start-design.md"
+  },
+  {
+    "sequence": 13,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 13,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": "docs/maintenance-mode-start-design.md"
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "fixture": "03-import-readiness-naming",
+  "mode": "baseline",
+  "run": 3,
+  "execution_success": true,
+  "prompt_sha256": "257cee31ea1dc3b9f672a6b078b9eedbd15a8d5b2ef1a5881a47e3cc33fee1c0",
+  "referent_table_count": 0,
+  "skill_invocation_observed": false,
+  "phase1_snapshot_observed": false,
+  "phase2_observed": false,
+  "g1_preflight_order_observed": false,
+  "g2_phase_separation_observed": false,
+  "semantic_validation_mentioned": false,
+  "turn_2_referent_changes_before_final": null
+}

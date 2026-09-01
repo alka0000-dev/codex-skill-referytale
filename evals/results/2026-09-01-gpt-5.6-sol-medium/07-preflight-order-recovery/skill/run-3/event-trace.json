@@ -1,0 +1,96 @@
+[
+  {
+    "sequence": 10,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".codex/referent-tables/referent-table-maintenance-mode-start.md"
+  },
+  {
+    "sequence": 12,
+    "turn": 1,
+    "event": "phase1_snapshot_observed"
+  },
+  {
+    "sequence": 15,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-maintenance-mode-start.md"
+  },
+  {
+    "sequence": 18,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-maintenance-mode-start.md"
+  },
+  {
+    "sequence": 21,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-maintenance-mode-start.md"
+  },
+  {
+    "sequence": 23,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-maintenance-mode-start.md"
+  },
+  {
+    "sequence": 25,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-maintenance-mode-start.md"
+  },
+  {
+    "sequence": 28,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": "docs/maintenance-mode-start-design.md"
+  },
+  {
+    "sequence": 31,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": "docs/maintenance-mode-start-design.md"
+  },
+  {
+    "sequence": 33,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": "docs/maintenance-mode-start-design.md"
+  },
+  {
+    "sequence": 35,
+    "turn": 1,
+    "event": "phase2_observed"
+  },
+  {
+    "sequence": 38,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": "docs/maintenance-mode-start-design.md"
+  },
+  {
+    "sequence": 40,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 43,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-maintenance-mode-start.md"
+  }
+]

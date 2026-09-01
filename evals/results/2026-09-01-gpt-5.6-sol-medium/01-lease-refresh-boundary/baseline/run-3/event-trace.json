@@ -1,0 +1,23 @@
+[
+  {
+    "sequence": 14,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 14,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": "SESSION_TOKEN_REFRESH_DESIGN.md"
+  },
+  {
+    "sequence": 19,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".agent/CONTINUITY.md"
+  }
+]

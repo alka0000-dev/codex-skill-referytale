@@ -1,0 +1,137 @@
+[
+  {
+    "sequence": 10,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".codex/referent-tables/referent-table-staged-rollout.md"
+  },
+  {
+    "sequence": 12,
+    "turn": 1,
+    "event": "phase1_snapshot_observed"
+  },
+  {
+    "sequence": 14,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-staged-rollout.md"
+  },
+  {
+    "sequence": 16,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-staged-rollout.md"
+  },
+  {
+    "sequence": 19,
+    "turn": 1,
+    "event": "phase2_observed"
+  },
+  {
+    "sequence": 23,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 23,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": "staged-rollout-design.md"
+  },
+  {
+    "sequence": 26,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-staged-rollout.md"
+  },
+  {
+    "sequence": 28,
+    "turn": 1,
+    "event": "phase2_observed"
+  },
+  {
+    "sequence": 30,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-staged-rollout.md"
+  },
+  {
+    "sequence": 32,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "delete",
+    "path": "staged-rollout-design.md"
+  },
+  {
+    "sequence": 34,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": "staged-rollout-design.md"
+  },
+  {
+    "sequence": 40,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 49,
+    "turn": 2,
+    "event": "phase2_observed"
+  },
+  {
+    "sequence": 51,
+    "turn": 2,
+    "event": "phase2_observed"
+  },
+  {
+    "sequence": 54,
+    "turn": 2,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-staged-rollout.md"
+  },
+  {
+    "sequence": 56,
+    "turn": 2,
+    "event": "phase2_observed"
+  },
+  {
+    "sequence": 58,
+    "turn": 2,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-staged-rollout.md"
+  },
+  {
+    "sequence": 61,
+    "turn": 2,
+    "event": "file_change",
+    "kind": "update",
+    "path": "staged-rollout-design.md"
+  },
+  {
+    "sequence": 67,
+    "turn": 2,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".agent/CONTINUITY.md"
+  },
+  {
+    "sequence": 73,
+    "turn": 2,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".agent/CONTINUITY.md"
+  }
+]

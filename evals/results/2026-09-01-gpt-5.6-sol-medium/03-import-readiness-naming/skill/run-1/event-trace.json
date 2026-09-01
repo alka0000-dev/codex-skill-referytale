@@ -1,0 +1,28 @@
+[
+  {
+    "sequence": 16,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".codex/referent-tables/referent-table-import-readiness-naming.md"
+  },
+  {
+    "sequence": 18,
+    "turn": 1,
+    "event": "phase1_snapshot_observed"
+  },
+  {
+    "sequence": 21,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-import-readiness-naming.md"
+  },
+  {
+    "sequence": 28,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".agent/CONTINUITY.md"
+  }
+]

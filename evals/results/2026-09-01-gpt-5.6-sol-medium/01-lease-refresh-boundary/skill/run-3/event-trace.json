@@ -1,0 +1,59 @@
+[
+  {
+    "sequence": 10,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".codex/referent-tables/referent-table-session-token-refresh.md"
+  },
+  {
+    "sequence": 12,
+    "turn": 1,
+    "event": "phase1_snapshot_observed"
+  },
+  {
+    "sequence": 15,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-session-token-refresh.md"
+  },
+  {
+    "sequence": 17,
+    "turn": 1,
+    "event": "phase1_snapshot_observed"
+  },
+  {
+    "sequence": 19,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-session-token-refresh.md"
+  },
+  {
+    "sequence": 22,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "update",
+    "path": ".codex/referent-tables/referent-table-session-token-refresh.md"
+  },
+  {
+    "sequence": 24,
+    "turn": 1,
+    "event": "phase2_observed"
+  },
+  {
+    "sequence": 27,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": "session-token-refresh-design.md"
+  },
+  {
+    "sequence": 32,
+    "turn": 1,
+    "event": "file_change",
+    "kind": "add",
+    "path": ".agent/CONTINUITY.md"
+  }
+]
