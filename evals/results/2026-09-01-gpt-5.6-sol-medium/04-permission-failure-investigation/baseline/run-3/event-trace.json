@@ -1,9 +1,0 @@
-[
-  {
-    "sequence": 10,
-    "turn": 1,
-    "event": "file_change",
-    "kind": "add",
-    "path": ".agent/CONTINUITY.md"
-  }
-]

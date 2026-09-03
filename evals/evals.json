@@ -1,0 +1,322 @@
+{
+  "version": "0.1.1",
+  "cases": [
+    {
+      "id": "p01-user-term-is-not-model-coinage",
+      "type": "rewrite",
+      "input": "記事タイトルは「不安なわたしに必要だった『他責力』」。『他責力』は私が今回使いたい言葉です。このメモから導入を書いて。",
+      "expected": [
+        "「他責力」をユーザー由来の表現として保持する",
+        "一般辞書にないことだけを理由に削除・置換しない"
+      ],
+      "must_not": [
+        "『他責力』をAI独自造語として排除する",
+        "別のキャッチーな概念名を追加する"
+      ],
+      "rubric": [
+        "V2",
+        "V1"
+      ]
+    },
+    {
+      "id": "p02-no-unsolicited-coinage",
+      "type": "write",
+      "input": "AIを使えば使うほど仕事で疲れる。理由は、AIが考えている間にも別の仕事を進めてしまい、暇がなくなるから。この内容を短いコラムにして。",
+      "expected": [
+        "提供された因果関係の範囲で文章化する"
+      ],
+      "must_not": [
+        "AI空白消失症候群",
+        "生産性疲労",
+        "並列作業パラドックス",
+        "その他の新しい概念名"
+      ],
+      "rubric": [
+        "F1",
+        "V1",
+        "M1"
+      ]
+    },
+    {
+      "id": "p03-no-invented-scene",
+      "type": "write",
+      "input": "新社会人向けの記事。メモ: 上司に怒られると終わったと思うかもしれない。私も新人時代はいろいろ失敗した。でも今はなんとか社会人として働けている。",
+      "expected": [
+        "メモにある経験だけを使う"
+      ],
+      "must_not": [
+        "会議室の描写",
+        "上司の具体的なセリフ",
+        "失敗した日時や場所",
+        "ユーザーが提示していない具体的事件"
+      ],
+      "rubric": [
+        "F1",
+        "M1"
+      ]
+    },
+    {
+      "id": "p04-keep-uncertainty",
+      "type": "rewrite",
+      "input": "『AIを使うと疲れるのは、切り替えが増えるからかもしれない』という一文を読みやすくして。",
+      "expected": [
+        "原因が仮説であることを保つ"
+      ],
+      "must_not": [
+        "切り替えの増加が原因だと断定する"
+      ],
+      "rubric": [
+        "F2",
+        "M1"
+      ]
+    },
+    {
+      "id": "p05-persona-overrides-generic-style",
+      "type": "composition",
+      "context": "同時適用中の人物Skill: 『noteでは結論を急がず、本人の一場面や違和感から入る。やわらかい一人称「わたし」を使う。』",
+      "input": "この人物Skillとreferytaleを使ってnote記事の冒頭を書いて。",
+      "expected": [
+        "人物Skillの導入方針と一人称を優先する"
+      ],
+      "must_not": [
+        "一般的な結論先行ルールで人物Skillを上書きする"
+      ],
+      "rubric": [
+        "P1"
+      ]
+    },
+    {
+      "id": "p06-established-term-is-allowed",
+      "type": "write",
+      "input": "文章を読むときの認知負荷について説明してください。専門用語は必要なら使って構いません。",
+      "expected": [
+        "一般に確立した用語は使用可能"
+      ],
+      "must_not": [
+        "確立語まで造語禁止として排除する"
+      ],
+      "rubric": [
+        "V1"
+      ]
+    },
+    {
+      "id": "p07-source-term-with-attribution",
+      "type": "write",
+      "input": "参考資料の著者が『保留する力』という表現を使っています。私はその表現を紹介しつつ、自分の考えを書きたいです。",
+      "expected": [
+        "『保留する力』を資料由来の表現として扱う"
+      ],
+      "must_not": [
+        "AI自身が考案した概念として提示する",
+        "別の新語へ置き換える"
+      ],
+      "rubric": [
+        "V1",
+        "M1"
+      ]
+    },
+    {
+      "id": "p08-explicit-naming-request",
+      "type": "naming",
+      "input": "『AIが考えている間に別の仕事を入れてしまい、空き時間が消える状態』に付ける記事用の名前を3案考えて。造語でも構いません。",
+      "expected": [
+        "新規名称を提案名として明示する",
+        "元の具体内容との対応が分かる"
+      ],
+      "must_not": [
+        "既存の学術用語であるかのように断定する"
+      ],
+      "rubric": [
+        "V1",
+        "M1"
+      ]
+    },
+    {
+      "id": "p09-do-not-universalize-personal-story",
+      "type": "rewrite",
+      "input": "私はゲームをラスボス直前でやめたり、本を8割くらいで止めたりする。自分の熱量には消費期限があるのかもしれない、という記事を書きたい。",
+      "expected": [
+        "本人の観察として扱う"
+      ],
+      "must_not": [
+        "人間は誰でも熱量の消費期限を持つと一般化する",
+        "心理学的な法則名を作る"
+      ],
+      "rubric": [
+        "F2",
+        "V1",
+        "Q2",
+        "M1"
+      ]
+    },
+    {
+      "id": "p10-naturalness-without-template",
+      "type": "rewrite",
+      "input": "次の文章を自然にして: 『AIは便利です。また、AIは速いです。さらに、AIは多くの仕事に使えます。このように、AIは重要だと言えるでしょう。』",
+      "expected": [
+        "接続詞と同型文の反復を減らす",
+        "内容以上の新しい主張を加えない"
+      ],
+      "must_not": [
+        "3点セットの箇条書きへ機械的に変換する",
+        "新しい統計や事例を足す"
+      ],
+      "rubric": [
+        "Q1",
+        "F1",
+        "M1"
+      ]
+    },
+    {
+      "id": "n01-translation-only",
+      "type": "negative-trigger",
+      "input": "この日本語を英語に訳してください。",
+      "expected": [
+        "referytaleの対象外"
+      ],
+      "rubric": []
+    },
+    {
+      "id": "n02-formatting-only",
+      "type": "negative-trigger",
+      "input": "このMarkdownを一文一行に整形してください。文章自体は変えないで。",
+      "expected": [
+        "referytaleの対象外"
+      ],
+      "rubric": []
+    },
+    {
+      "id": "n03-code-only",
+      "type": "negative-trigger",
+      "input": "PythonでCSVを読み込むコードを書いて。",
+      "expected": [
+        "referytaleの対象外"
+      ],
+      "rubric": []
+    },
+    {
+      "id": "p11-user-term-retention-rewrite",
+      "type": "rewrite",
+      "input": "私は『風呂場にある死体』という自虐的な比喩をあえて残したい。この文章を自然に整えて。",
+      "expected": [
+        "比喩を保持する"
+      ],
+      "must_not": [
+        "一般的な表現へ勝手に置換する"
+      ],
+      "rubric": [
+        "V2",
+        "M1"
+      ]
+    },
+    {
+      "id": "p12-persona-structure-overrides-generic",
+      "type": "composition",
+      "context": "人物Skill: 『記事の最後に普遍的な教訓へまとめない。本人の実感か余韻で終える。』",
+      "input": "この人物Skillとreferytaleを使って失敗談の記事の結びを書いて。",
+      "expected": [
+        "人物Skillを優先する"
+      ],
+      "must_not": [
+        "『失敗は成長の糧です』のように普遍化する"
+      ],
+      "rubric": [
+        "P1",
+        "Q2"
+      ]
+    },
+    {
+      "id": "p13-no-over-structuring-personal-essay",
+      "type": "rewrite",
+      "input": "『夏休み最終日の20時に宿題を諦めた。補習になった。翌年もまた計画だけは立てた。』この流れを読みやすくして。",
+      "expected": [
+        "出来事の流れを保つ"
+      ],
+      "must_not": [
+        "3つの学びに分類する",
+        "チェックリスト化する"
+      ],
+      "rubric": [
+        "Q2",
+        "M1"
+      ]
+    },
+    {
+      "id": "p14-break-repetitive-template",
+      "type": "rewrite",
+      "input": "『朝がつらいです。出社がつらいです。準備がつらいです。だから風呂場で少し寝ます。』内容は増やさず自然にして。",
+      "expected": [
+        "同型文の反復を必要な範囲で崩す"
+      ],
+      "must_not": [
+        "新しい原因を追加する"
+      ],
+      "rubric": [
+        "Q1",
+        "F1",
+        "M1"
+      ]
+    },
+    {
+      "id": "p15-preserve-claim-strength",
+      "type": "rewrite",
+      "input": "『私はこの考え方が嫌いだ』という強い言い方を、意味を弱めず読みやすくして。",
+      "expected": [
+        "強い否定を保持する"
+      ],
+      "must_not": [
+        "『自分には合わない』へ弱める"
+      ],
+      "rubric": [
+        "M1"
+      ]
+    },
+    {
+      "id": "p16-no-invented-emotion",
+      "type": "write",
+      "input": "メモ: 共同で会社を立ち上げたが、方向性の違いで半年ほどで解散した。記事の導入にして。",
+      "expected": [
+        "提示事実の範囲で書く"
+      ],
+      "must_not": [
+        "悔しかった",
+        "悲しかった",
+        "裏切られた"
+      ],
+      "rubric": [
+        "F1"
+      ]
+    },
+    {
+      "id": "p17-creative-task-can-invent",
+      "type": "write",
+      "input": "これは完全なフィクションです。架空の魔法学校の生徒が使う新しい俗語を3つ考えて。",
+      "expected": [
+        "創作として新語を提案できる"
+      ],
+      "must_not": [
+        "非フィクション用ルールを理由に拒む"
+      ],
+      "rubric": [
+        "V1"
+      ]
+    },
+    {
+      "id": "p18-provenance-table-mode",
+      "type": "strict-write",
+      "input": "複数の資料と人物Skillを使って記事を書きます。根拠を追えるように厳密に扱ってください。",
+      "expected": [
+        "Provenance Table モードを有効にする",
+        "主要材料を出所へ対応させてから使う"
+      ],
+      "must_not": [
+        "本文へ先に足して後から正当化する"
+      ],
+      "rubric": [
+        "F1",
+        "V1",
+        "P1"
+      ]
+    }
+  ]
+}
