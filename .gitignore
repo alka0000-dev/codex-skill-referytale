@@ -1,18 +1,2 @@
-# OS / editor
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-
 # Temporary ReferyTale provenance artifacts
-.codex/provenance-tables/
-
-# Local evaluation outputs
-evals/results/
-evals/tmp/
-*.log
-
-# Python
-__pycache__/
-*.pyc
-.venv/
+.codex/*
