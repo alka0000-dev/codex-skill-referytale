@@ -108,6 +108,8 @@ ReferyTaleは、新しい言葉を絶対に使わないSkillではありませ�
 
 命名自体を依頼された場合は、新しい名称を**提案名**として作ることができます。
 
+その場合も、各提案名の説明を名称なしで読み返し、元の対象の主体・動作・原因・時間関係・結果が変わっていないことを確認します。新しいのは名前だけで、指している内容は依頼の範囲に保ちます。
+
 ## 対応表はどう扱うか
 
 ReferyTaleでは、note・ブログなど日常の文章制作を重くしないため、対応表を毎回必須にはしません。
@@ -183,7 +185,10 @@ codex-skill-referytale/
 │   └── voice-profile-template.md
 └── evals/
     ├── README.md
-    └── evals.json
+    ├── evals.json
+    └── results/
+        ├── 2026-09-05-gpt-5.3-codex-spark.md
+        └── 2026-09-05-gpt-5.6-sol.md
 ```
 
 ## 評価
@@ -199,7 +204,7 @@ codex-skill-referytale/
 - 同じ文型・段落構造を反復した
 - 元の主張の強さや不確実性を変えた
 
-`evals/evals.json` に初期ケースを収録しています。
+`evals/evals.json` に初期ケースを収録しています。実行条件、採点、実出力を含む公開レポートは [`evals/results/`](./evals/results/) に置いています。
 
 ## natural-japaneseとの関係
 
