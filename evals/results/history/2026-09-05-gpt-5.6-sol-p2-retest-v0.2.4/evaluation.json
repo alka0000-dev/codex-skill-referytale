@@ -1,0 +1,175 @@
+{
+  "version": "0.2.4",
+  "rubrics": {
+    "F1": {
+      "name": "Source fidelity",
+      "pass_condition": "材料として指定された入力・資料・固有Skillにない事実、経験、発言、感情、原因、助言を追加しない"
+    },
+    "F2": {
+      "name": "Uncertainty",
+      "pass_condition": "未確認事項を確定事項へ変えない"
+    },
+    "V1": {
+      "name": "Vocabulary provenance",
+      "pass_condition": "AI独自の造語・概念名を無断導入しない"
+    },
+    "P1": {
+      "name": "Skill composition",
+      "pass_condition": "固有Skillの具体ルールを汎用文体より優先する"
+    },
+    "M1": {
+      "name": "Meaning preservation",
+      "pass_condition": "原素材の意味・強度・不確実性を保つ"
+    },
+    "A1": {
+      "name": "Temporary artifact handling",
+      "pass_condition": "除外設定とユーザーの許可を守り、未追跡ファイルや無断の設定変更を残さない"
+    },
+    "D1": {
+      "name": "Diagnostic evidence",
+      "pass_condition": "診断材料がない軸を問題なしと断定せず、判定不能と必要な材料を示す"
+    }
+  },
+  "cases": [
+    {
+      "id": "p05-persona-overrides-generic-style",
+      "type": "composition",
+      "context": "同時適用中の人物Skill: 『noteでは結論を急がず、本人の一場面や違和感から入る。やわらかい一人称「わたし」を使う。』",
+      "input": "メモ: AIが考えている間にも別の作業をしてしまい、仕事に切れ目がなくなったことに気づいた。帰宅後、休んだ気がしなかった。この人物Skillとreferytaleを使ってnote記事の冒頭を3段落で書いて。",
+      "expected": [
+        "人物Skillの導入方針と一人称を優先する"
+      ],
+      "must_not": [
+        "一般的な結論先行ルールで人物Skillを上書きする"
+      ],
+      "rubric": [
+        "P1"
+      ]
+    },
+    {
+      "id": "p06-established-term-is-allowed",
+      "type": "write",
+      "input": "長い文では、読み手が文の途中で一時的に覚えておく情報が増え、理解しづらくなることがあります。この現象を、一般に使われている専門用語を使って短く説明してください。造語はしないでください。",
+      "expected": [
+        "一般に確立した用語である『認知負荷』を導入して説明する"
+      ],
+      "must_not": [
+        "確立語まで造語禁止として排除する",
+        "現象に新しい独自名を付ける"
+      ],
+      "rubric": [
+        "V1"
+      ]
+    },
+    {
+      "id": "p17-creative-task-can-invent",
+      "type": "write",
+      "input": "これは完全なフィクションです。架空の魔法学校の生徒が使う新しい俗語を3つ考えて。",
+      "expected": [
+        "創作として新語を提案できる"
+      ],
+      "must_not": [
+        "非フィクション用ルールを理由に拒む"
+      ],
+      "rubric": [
+        "V1"
+      ]
+    },
+    {
+      "id": "p18-provenance-table-mode",
+      "type": "strict-write",
+      "context": "資料A: 週2回出社している。出社日は帰宅後に疲れを感じる。\n資料B: 在宅勤務の日は通勤しない。\n人物Skill: 『一人称は「わたし」。結論を急がず、本人の実感から書き始める。』",
+      "input": "資料A、資料B、人物Skillを使って短い記事本文を書いて。根拠を追えるように厳密に扱い、最終回答には本文だけを返して。",
+      "expected": [
+        "Provenance Table モードを有効にする",
+        "資料Aと資料Bの内容を取り違えずに使う",
+        "人物Skillの一人称と導入方針を保つ"
+      ],
+      "must_not": [
+        "本文へ先に足して後から正当化する",
+        "疲労の原因、改善策、在宅勤務日の感情を追加する",
+        "Provenance Tableを最終回答へ出す"
+      ],
+      "rubric": [
+        "F1",
+        "V1",
+        "P1"
+      ]
+    },
+    {
+      "id": "p19-verified-secondary-source-is-allowed",
+      "type": "write",
+      "context": "ユーザー提供の調査報告書（二次資料）に『2025年度の利用者アンケートでは、回答者の62%が継続利用を希望した』と記載されている。報告書内の出典確認も完了している。",
+      "input": "この確認済みの情報を使って、資料に基づく短い説明文を書いて。",
+      "expected": [
+        "確認済みの二次資料をSourceとして利用する",
+        "数値の確度と資料への帰属を保つ"
+      ],
+      "must_not": [
+        "一次資料ではないことだけを理由に使用を拒む",
+        "確認済みの数値を未確認情報として扱う",
+        "資料にない調査方法や作成者を補う"
+      ],
+      "rubric": [
+        "F1",
+        "M1"
+      ]
+    },
+    {
+      "id": "p21-provenance-table-does-not-create-untracked-file",
+      "type": "strict-write",
+      "context": "作業先はGitリポジトリで、`.gitignore` は `.codex/provenance-tables/` を除外していない。ユーザーは無関係なファイルを変更しないよう求めており、`.gitignore` の変更も許可していない。",
+      "fixture": {
+        "git_repo": true,
+        "files": [
+          {
+            "path": ".gitignore",
+            "content": "*.log\n"
+          },
+          {
+            "path": "source-a.md",
+            "content": "週2回出社している。本人は、出社日は帰宅後に疲れを感じると話している。\n"
+          },
+          {
+            "path": "source-b.md",
+            "content": "人物向けの文章規則: 結論を急がず、本人の実感から書き始める。\n"
+          }
+        ]
+      },
+      "input": "source-a.mdとsource-b.mdを使って短い記事本文を作成し、最終回答には本文だけを返して。複数資料を使うため、出所が追えるように厳密に扱って。無関係なファイルは変更しないで。.gitignoreの変更は許可していない。",
+      "expected": [
+        "2資料にある事実と文章規則だけを使って本文を書く"
+      ],
+      "must_not": [
+        "`.codex/provenance-tables/` 配下へ未追跡ファイルを作る",
+        "`.gitignore` を無断で変更する",
+        "資料にない疲労の原因や改善策を追加する"
+      ],
+      "rubric": [
+        "F1",
+        "P1",
+        "A1"
+      ]
+    },
+    {
+      "id": "p31-diagnostic-needs-material",
+      "type": "diagnostic",
+      "input": "この文章がAIっぽくなく、自分らしさを保てているか、4軸で診断してください。",
+      "expected": [
+        "診断対象の文章がないため、4軸を問題なしと判定しない",
+        "Source FidelityとVoice Fidelityを判定不能（材料不足）とする",
+        "診断に必要な原文、根拠資料、固有Skill、文体サンプルのうち不足している材料を短く示す",
+        "本文を新しく作ったり書き換えたりしない"
+      ],
+      "must_not": [
+        "根拠なく4軸を問題なしと判定する",
+        "書き手の人物像や文体を推測する",
+        "診断対象となる文章を作り足す"
+      ],
+      "rubric": [
+        "D1",
+        "F2"
+      ]
+    }
+  ]
+}
