@@ -186,14 +186,15 @@ codex-skill-referytale/
 └── evals/
     ├── README.md
     ├── evals.json
+    ├── run-evals.mjs
+    ├── run-evals.test.mjs
     └── results/
-        ├── 2026-09-05-gpt-5.3-codex-spark.md
-        └── 2026-09-05-gpt-5.6-sol.md
+        └── README.md
 ```
 
 ## 評価
 
-初期evalでは、次の失敗を個別に確認します。
+evalでは、次の失敗を個別に確認します。
 
 - 入力にない経験を追加した
 - 不明な原因や感情を断定した
@@ -204,7 +205,9 @@ codex-skill-referytale/
 - 同じ文型・段落構造を反復した
 - 元の主張の強さや不確実性を変えた
 
-`evals/evals.json` に初期ケースを収録しています。実行条件、採点、実出力を含む公開レポートは [`evals/results/`](./evals/results/) に置いています。
+`evals/evals.json` に33ケースを収録しています。GPT-5.6-sol・lowによる最新の全件比較では、Skillなし16/33に対してSkillあり33/33でした。改善17件、同等16件、悪化0件で、生成エラーと作業領域への副作用も0件です。
+
+実行条件、評価定義、採点、実出力、内容ハッシュを含む公開レポートは、[`evals/results/2026-09-05-gpt-5.6-sol-full-v0.2.3/report.md`](./evals/results/2026-09-05-gpt-5.6-sol-full-v0.2.3/report.md)に置いています。これは同一モデルによる自動採点であり、人手評価や他モデルを含む一般性能を示すものではありません。再実行方法と全成果物は[`evals/README.md`](./evals/README.md)を参照してください。
 
 ## natural-japaneseとの関係
 

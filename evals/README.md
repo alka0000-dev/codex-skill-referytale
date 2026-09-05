@@ -2,12 +2,64 @@
 
 `referytale` の回帰評価では、文章の上手さだけでなく失敗署名を確認する。
 
+評価ケース、rubricの定義、合格条件の機械可読な正本は[`evals.json`](./evals.json)に置く。このREADMEは、評価意図と実行方法を説明する。
+
+## 実行方法
+
+依存パッケージは不要で、Node.jsと認証済みのCodex CLIを使う。ランナーは、公式の[Codex非対話モード](https://developers.openai.com/codex/non-interactive-mode)で生成と採点を実行する。
+
+最初にdry-runで、ケース数、条件、モデル、出力先を確認する。dry-runはファイルを作らず、モデルも呼び出さない。
+
+```shell
+node evals/run-evals.mjs --dry-run
+```
+
+全33ケースをGPT-5.6-sol・lowで、Skillなし／あり各1回実行し、条件名を伏せて採点してレポートを作る場合:
+
+```shell
+node evals/run-evals.mjs \
+  --model gpt-5.6-sol \
+  --grader-model gpt-5.6-sol \
+  --reasoning low \
+  --conditions control,skill \
+  --repetitions 1 \
+  --concurrency 4
+```
+
+この設定では生成66回と、既定で最大8出力ずつの採点9回を行う。中断した場合は、同じ出力先を指定して`--resume`を付けると、成功済みの生成と採点を再利用する。
+
+```shell
+node evals/run-evals.mjs \
+  --output evals/results/2026-09-05-gpt-5.6-sol-full \
+  --resume
+```
+
+`--stage generate`、`--stage grade`、`--stage report`で工程を分けられる。`--cases p02-no-unsolicited-coinage,p25-sparse-material-does-not-create-backstory`のように対象を絞ることもできる。全オプションは`node evals/run-evals.mjs --help`で確認する。
+
+各生成はOSの一時ディレクトリに作った別々の作業領域で行う。両条件に同じ共通指示、入力、fixtureを与え、Skillあり条件だけに`SKILL.md`と`references/`を配置する。端末側のSkill探索、Skill検索、プラグイン、ユーザー設定は無効化する。生成担当には`expected`、`must_not`、rubricを渡さない。
+
+ユーザー階層の`AGENTS.md`やSkillが評価へ混ざらないよう、既定では実行中だけ使う隔離`CODEX_HOME`を一時ディレクトリへ作る。認証は、プロセスに`CODEX_API_KEY`が設定されていればそれを使い、それ以外では既存の`auth.json`をコピーせずファイルリンクで参照する。リンクを作れない環境では、認証情報を貼り付けず、プロセス単位の`CODEX_API_KEY`を設定する。`--allow-user-codex-home`で通常の`CODEX_HOME`も使えるが、ユーザー指示が出力へ影響するため正式比較には使わない。
+
+結果ディレクトリには次を保存する。
+
+- `evaluation.json`: 実行時に使った対象ケースとrubricのスナップショット
+- `manifest.json`: モデル、reasoning effort、対象ケース、Gitコミット、評価定義・ランナー・Skill・参照資料のSHA-256
+- `generations.jsonl`: 条件ごとの生の最終出力、トークン使用量、実行時間、最終ファイル差分
+- `grading.jsonl`: 条件名を伏せた別セッションによるrubric単位の判定
+- `grading-batches.jsonl`: 採点バッチの実行情報とトークン使用量
+- `summary.json`: 条件別、rubric別、ケース別の集計値
+- `report.md`: 公開用の比較レポート
+
+採点は実行を再現しやすくするため自動化しているが、人手評価の代わりではない。Skill本文を修正する前に、不合格ケースの実出力を原素材へ照合し、同じ失敗が再現するかを追加実行で確認する。
+
 ## 公開している実行結果
 
+- [2026-09-05 — GPT-5.6-sol 全33ケース](./results/2026-09-05-gpt-5.6-sol-full-v0.2.3/report.md) — Skillなし16/33、Skillあり33/33、改善17・同等16・悪化0
+- [2026-09-05 — 片側の材料を保つ安定性評価](./results/2026-09-05-gpt-5.6-sol-one-sided-retest/report.md) — 既存・未見2ケースを各5回実行し、Skillなし0/10、Skillあり10/10
 - [2026-09-05 — GPT-5.3-Codex-Spark](./results/2026-09-05-gpt-5.3-codex-spark.md) — Skillなし／ありの8ケース、合計32出力の比較
 - [2026-09-05 — GPT-5.6-sol](./results/2026-09-05-gpt-5.6-sol.md) — 過去の失敗と今回の修正に関係する10ケース、12出力の結果と実出力
 
-結果の点数は、実行したケースの範囲だけを表す。全ケースの成功率として扱わない。モデル、reasoning effort、対象コミット、実行回数、Skillなし対照群の有無を結果ファイルへ記録する。
+最新結果の一覧は[`results/README.md`](./results/README.md)に置く。結果の点数は、実行したケースの範囲だけを表す。モデル、reasoning effort、対象コミット、実行回数、Skillなし対照群の有無を結果ファイルへ記録する。自動採点だけでSkillの普遍的な性能や、人手評価と同等の品質を主張しない。
 
 | ID | 評価項目 | 合格条件 |
 |---|---|---|
@@ -20,6 +72,7 @@
 | Q2 | No over-structuring | 個人の体験を勝手に分類・教訓・一般論へ変えない |
 | M1 | Meaning preservation | 原素材の意味・強度・不確実性を保つ |
 | A1 | 一時成果物の扱い | 除外設定とユーザーの許可を守り、未追跡ファイルや無断の設定変更を残さない |
+| N1 | Out-of-scope non-interference | 対象外の依頼をそのまま完了し、文章改善用の監査・造語・人物表現規則を持ち込まない |
 
 ## Provenance Table モード
 
