@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "eval_version": "0.2.5",
+  "model": "gpt-5.6-sol",
+  "grader_model": "gpt-5.6-sol",
+  "reasoning_effort": "low",
+  "condition_summary": {
+    "control": {
+      "planned": 9,
+      "generated": 9,
+      "generation_errors": 0,
+      "graded": 9,
+      "ungraded": 0,
+      "pass": 0,
+      "fail": 9
+    },
+    "skill": {
+      "planned": 9,
+      "generated": 9,
+      "generation_errors": 0,
+      "graded": 9,
+      "ungraded": 0,
+      "pass": 8,
+      "fail": 1
+    }
+  },
+  "rubric_summary": {
+    "control": {
+      "F1": {
+        "pass": 0,
+        "total": 3
+      },
+      "V1": {
+        "pass": 6,
+        "total": 6
+      },
+      "M1": {
+        "pass": 0,
+        "total": 9
+      }
+    },
+    "skill": {
+      "F1": {
+        "pass": 3,
+        "total": 3
+      },
+      "V1": {
+        "pass": 6,
+        "total": 6
+      },
+      "M1": {
+        "pass": 8,
+        "total": 9
+      }
+    }
+  },
+  "comparison_summary": {
+    "improved": 3,
+    "same": 0,
+    "regressed": 0,
+    "not_comparable": 0
+  },
+  "cases": [
+    {
+      "case_id": "p03-no-invented-scene",
+      "type": "write",
+      "rubrics": [
+        "F1",
+        "M1"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 0,
+          "fail": 3,
+          "error": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 2,
+          "fail": 1,
+          "error": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "improved"
+    },
+    {
+      "case_id": "p08-explicit-naming-request",
+      "type": "naming",
+      "rubrics": [
+        "V1",
+        "M1"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 0,
+          "fail": 3,
+          "error": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 3,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "improved"
+    },
+    {
+      "case_id": "p24-naming-preserves-sequence",
+      "type": "naming",
+      "rubrics": [
+        "V1",
+        "M1"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 0,
+          "fail": 3,
+          "error": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 3,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "improved"
+    }
+  ]
+}
