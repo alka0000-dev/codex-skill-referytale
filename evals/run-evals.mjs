@@ -6,10 +6,13 @@ import {
   access,
   appendFile,
   link,
+  lstat,
   mkdir,
   mkdtemp,
+  open,
   readFile,
   readdir,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -23,11 +26,12 @@ import { isDeepStrictEqual } from 'node:util';
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const EVALS_DIRECTORY = path.dirname(SCRIPT_PATH);
 const REPOSITORY_ROOT = path.dirname(EVALS_DIRECTORY);
+const REFERENCES_ROOT = path.join(REPOSITORY_ROOT, 'references');
 const DEFAULT_MODEL = 'gpt-5.6-sol';
 const CONDITIONS = new Set(['control', 'skill']);
 const STAGES = new Set(['generate', 'grade', 'report', 'all']);
 const REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
-const HARNESS_VERSION = '8';
+const HARNESS_VERSION = '9';
 const FORCE_KILL_GRACE_MS = 1000;
 
 const COMMON_AGENTS = `# Isolated evaluation workspace
@@ -211,6 +215,9 @@ export function parseArguments(argv) {
     `${today}-${sanitizePathSegment(options.model)}-full`,
   );
   options.output = path.resolve(options.output);
+  if (isPathWithin(REFERENCES_ROOT, options.output)) {
+    throw new Error('--output must be outside the references directory.');
+  }
 
   return options;
 }
@@ -290,6 +297,8 @@ export function validateEvaluation(evaluation) {
     for (const fixtureFile of evaluationCase.fixture?.files ?? []) {
       if (!isSafeRelativePath(fixtureFile.path)) {
         errors.push(`${label} has an unsafe fixture path: ${fixtureFile.path}`);
+      } else if (isReservedFixturePath(fixtureFile.path)) {
+        errors.push(`${label} has a reserved fixture path: ${fixtureFile.path}`);
       }
       if (typeof fixtureFile.content !== 'string') {
         errors.push(`${label} fixture content must be a string: ${fixtureFile.path}`);
@@ -344,6 +353,24 @@ function isSafeRelativePath(relativePath) {
   return normalized !== '..' && !normalized.startsWith(`..${path.sep}`);
 }
 
+function isReservedFixturePath(relativePath) {
+  const normalized = path.posix.normalize(relativePath.replaceAll('\\', '/'))
+    .split('/')
+    .map((segment) => segment.replace(/[. ]+$/u, ''))
+    .join('/')
+    .toLowerCase();
+  return normalized === 'agents.md'
+    || normalized.startsWith('agents.md/')
+    || normalized === 'references'
+    || normalized.startsWith('references/');
+}
+
+function isPathWithin(root, candidate) {
+  const relative = path.relative(path.resolve(root), path.resolve(candidate));
+  return relative === ''
+    || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
 function resolveInside(root, relativePath) {
   if (!isSafeRelativePath(relativePath)) {
     throw new Error(`Unsafe relative path: ${relativePath}`);
@@ -351,9 +378,7 @@ function resolveInside(root, relativePath) {
 
   const resolvedRoot = path.resolve(root);
   const resolvedPath = path.resolve(root, relativePath);
-  const rootPrefix = `${resolvedRoot}${path.sep}`;
-
-  if (resolvedPath !== resolvedRoot && !resolvedPath.startsWith(rootPrefix)) {
+  if (!isPathWithin(resolvedRoot, resolvedPath)) {
     throw new Error(`Path leaves the workspace: ${relativePath}`);
   }
 
@@ -698,8 +723,7 @@ async function listFilesRecursively(root, current = root) {
 
 async function loadInstructionSnapshot() {
   const skillContent = await readFile(path.join(REPOSITORY_ROOT, 'SKILL.md'), 'utf8');
-  const referencesRoot = path.join(REPOSITORY_ROOT, 'references');
-  const referencePaths = await listFilesRecursively(referencesRoot);
+  const referencePaths = await listFilesRecursively(REFERENCES_ROOT);
   const referenceFiles = [];
 
   for (const referencePath of referencePaths.sort()) {
@@ -786,17 +810,46 @@ export async function prepareWorkspace(root, task, instructionSnapshot) {
   }
 }
 
-async function captureFixtureFiles(root, evaluationCase) {
+export async function captureFixtureFiles(root, evaluationCase) {
   return Promise.all((evaluationCase.fixture?.files ?? []).map(async (fixtureFile) => {
     const filePath = resolveInside(root, fixtureFile.path);
     let finalContent = null;
+    let fileHandle;
 
     try {
-      finalContent = await readFile(filePath, 'utf8');
+      const fileInfo = await lstat(filePath);
+      if (fileInfo.isSymbolicLink() || !fileInfo.isFile()) {
+        throw new Error(`Fixture path must remain a regular file inside the workspace: ${fixtureFile.path}`);
+      }
+
+      const [resolvedRoot, resolvedFile] = await Promise.all([
+        realpath(root),
+        realpath(filePath),
+      ]);
+      if (!isPathWithin(resolvedRoot, resolvedFile)) {
+        throw new Error(`Fixture path must remain a regular file inside the workspace: ${fixtureFile.path}`);
+      }
+
+      const noFollowFlag = fsConstants.O_NOFOLLOW ?? 0;
+      fileHandle = await open(filePath, fsConstants.O_RDONLY | noFollowFlag);
+      const openedFileInfo = await fileHandle.stat();
+      if (
+        !openedFileInfo.isFile()
+        || openedFileInfo.dev !== fileInfo.dev
+        || openedFileInfo.ino !== fileInfo.ino
+      ) {
+        throw new Error(`Fixture path must remain a regular file inside the workspace: ${fixtureFile.path}`);
+      }
+      finalContent = await fileHandle.readFile('utf8');
     } catch (error) {
       if (error.code !== 'ENOENT') {
+        if (error.code === 'ELOOP') {
+          throw new Error(`Fixture path must remain a regular file inside the workspace: ${fixtureFile.path}`);
+        }
         throw error;
       }
+    } finally {
+      await fileHandle?.close();
     }
 
     return {
@@ -1147,7 +1200,7 @@ ${JSON.stringify(payload)}
 `;
 }
 
-function validateGraderResponse(parsedResponse, samples) {
+export function validateGraderResponse(parsedResponse, samples) {
   if (!parsedResponse || !Array.isArray(parsedResponse.results)) {
     throw new Error('Grader response does not contain a results array.');
   }
@@ -1171,8 +1224,8 @@ function validateGraderResponse(parsedResponse, samples) {
       throw new Error(`Rubric mismatch for ${result.sample_id}.`);
     }
 
-    const expectedOverall = result.rubric_results.every((rubric) => rubric.pass) ? 'pass' : 'fail';
-    if (result.overall !== expectedOverall) {
+    const hasFailedRubric = result.rubric_results.some((rubric) => !rubric.pass);
+    if (!['pass', 'fail'].includes(result.overall) || (result.overall === 'pass' && hasFailedRubric)) {
       throw new Error(`Overall result is inconsistent for ${result.sample_id}.`);
     }
   }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -10,6 +10,7 @@ import {
   buildMarkdownReport,
   buildEvaluationSnapshot,
   buildGenerationPlan,
+  captureFixtureFiles,
   compareSnapshots,
   executeGraderBatch,
   loadOrCreateManifest,
@@ -22,6 +23,7 @@ import {
   runProcess,
   summarizeResults,
   validateEvaluation,
+  validateGraderResponse,
 } from './run-evals.mjs';
 
 const evaluation = {
@@ -69,6 +71,13 @@ test('parseArguments allows zero grader retries', () => {
   );
 });
 
+test('parseArguments rejects result output inside references', () => {
+  assert.throws(
+    () => parseArguments(['--output', path.join('references', 'nested-result')]),
+    /outside the references directory/,
+  );
+});
+
 test('validateEvaluation rejects unknown rubrics and duplicate cases', () => {
   const invalid = structuredClone(evaluation);
   invalid.cases.push({ ...invalid.cases[0], rubric: ['missing'] });
@@ -91,6 +100,21 @@ test('validateEvaluation rejects colliding workspace names and duplicate rubrics
 
   assert.ok(errors.some((error) => error.includes('duplicate rubric F1')));
   assert.ok(errors.some((error) => error.includes('case/2 and case-2 share workspace segment case-2')));
+});
+
+test('validateEvaluation reserves harness instruction paths', () => {
+  const invalid = structuredClone(evaluation);
+  invalid.cases[0].fixture = {
+    files: [
+      { path: 'AGENTS.md', content: 'override' },
+      { path: 'references/policy.md', content: 'override' },
+    ],
+  };
+
+  const errors = validateEvaluation(invalid);
+
+  assert.ok(errors.some((error) => error.includes('reserved fixture path: AGENTS.md')));
+  assert.ok(errors.some((error) => error.includes('reserved fixture path: references/policy.md')));
 });
 
 test('buildGenerationPlan creates every case-condition-repetition combination', () => {
@@ -296,6 +320,35 @@ test('prepareWorkspace writes the supplied Skill and reference snapshot', async 
   }
 });
 
+test('captureFixtureFiles refuses a fixture that resolves outside the workspace', async () => {
+  const workspace = await mkdtemp(path.join(tmpdir(), 'referytale-workspace-test-'));
+  const outside = await mkdtemp(path.join(tmpdir(), 'referytale-outside-test-'));
+
+  try {
+    await writeFile(path.join(outside, 'secret.txt'), 'secret', 'utf8');
+    await writeFile(path.join(workspace, 'memo.txt'), 'updated', 'utf8');
+
+    assert.deepEqual(
+      await captureFixtureFiles(workspace, {
+        fixture: { files: [{ path: 'memo.txt', content: 'initial' }] },
+      }),
+      [{ path: 'memo.txt', initial_content: 'initial', final_content: 'updated' }],
+    );
+
+    await symlink(outside, path.join(workspace, 'linked'), process.platform === 'win32' ? 'junction' : 'dir');
+
+    await assert.rejects(
+      () => captureFixtureFiles(workspace, {
+        fixture: { files: [{ path: 'linked/secret.txt', content: 'initial' }] },
+      }),
+      /regular file inside the workspace/,
+    );
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
+});
+
 test('readJsonLines rejects a malformed completed record', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'referytale-jsonl-test-'));
   const filePath = path.join(directory, 'records.jsonl');
@@ -315,6 +368,28 @@ test('nextGradingBatchNumber advances past records from an earlier run', () => {
     { batch_id: 'batch-3' },
     { batch_id: 'legacy-id' },
   ]), 4);
+});
+
+test('validateGraderResponse accepts an expectation-only overall failure', () => {
+  const samples = [{ blindId: 'sample-1', evaluationCase: evaluation.cases[0] }];
+
+  assert.doesNotThrow(() => validateGraderResponse({
+    results: [{
+      sample_id: 'sample-1',
+      rubric_results: [{ id: 'F1', pass: true, reason: 'No additions.' }],
+      overall: 'fail',
+      reason: 'The exact expected format was not met.',
+    }],
+  }, samples));
+
+  assert.throws(() => validateGraderResponse({
+    results: [{
+      sample_id: 'sample-1',
+      rubric_results: [{ id: 'F1', pass: false, reason: 'Added material.' }],
+      overall: 'pass',
+      reason: 'Pass.',
+    }],
+  }, samples), /Overall result is inconsistent/);
 });
 
 test('executeGraderBatch records failed attempts before a successful retry', async () => {
