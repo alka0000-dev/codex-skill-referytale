@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "run_id": "061209c843aa16e3",
+  "created_at": "2026-09-05T09:36:50.099Z",
+  "harness_version": "6",
+  "eval_version": "0.2.23",
+  "eval_file": "evals/evals.json",
+  "case_ids": [
+    "p18-provenance-table-mode"
+  ],
+  "model": "gpt-5.6-sol",
+  "grader_model": "gpt-5.6-sol",
+  "reasoning_effort": "low",
+  "conditions": [
+    "control",
+    "skill"
+  ],
+  "repetitions": 3,
+  "planned_generations": 6,
+  "concurrency": 2,
+  "grader_batch_size": 8,
+  "grader_retries": 0,
+  "timeout_seconds": 600,
+  "codex_home_isolated": true,
+  "codex_cli_version": "codex-cli 0.153.1",
+  "git_commit": "e48241f59d27ba3bbc4077e702153b5d31425f84",
+  "git_dirty_at_start": false,
+  "runner_sha256": "5f89f25505f0adafd7b9608daedf7320a9671aeadd6bb8cd884c39351165b61e",
+  "skill_sha256": "d2a6326388b8372d5b55342a878ae43b5c43d04830fc9d0df7f246dbcc5bc3b5",
+  "reference_sha256": {
+    "references/naturalness-review.md": "22730be61770a4378370a1c221c8afcb611a48d4394cc7b5e8aaa8a2a29416e6",
+    "references/provenance-policy.md": "3ef909d67894ec773d2028f2b9c4b1bc0db84c3f2218638836e779ab52c6248b",
+    "references/skill-composition.md": "db7796c1acd2ae3c6e6b9982a985786a1478efdd9529d14b2194c13e6e23e3cd",
+    "references/voice-profile-template.md": "464e3c884e3f1a3e9e724575953f16e73af144401ec75d55bcd82f41c982caf4"
+  },
+  "evaluation_snapshot_file": "evaluation.json",
+  "evaluation_snapshot_sha256": "8f385e2a08efcaaea9666dcbd4a9d3008ebdf09ca160c27a7a4f0f7e9db3ed82",
+  "authentication_mode": "linked-existing-auth",
+  "generation_completed_at": "2026-09-05T09:37:17.658Z",
+  "generation_successes": 6,
+  "generation_errors": 0,
+  "grader_authentication_mode": "linked-existing-auth",
+  "grading_completed_at": "2026-09-05T09:37:46.860Z",
+  "graded_outputs": 6,
+  "report_completed_at": "2026-09-05T09:37:46.864Z"
+}
