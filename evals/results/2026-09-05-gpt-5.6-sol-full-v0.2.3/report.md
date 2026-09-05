@@ -1,5 +1,7 @@
 # ReferyTale 全件比較評価 — gpt-5.6-sol
 
+> **公開後訂正:** 手動再確認により、Skillありのp08とp14を不合格へ訂正した。訂正後は31/33である。元の自動採点データは監査用に保持し、訂正内容は[`review-correction.json`](./review-correction.json)を正本とする。また、この実行は基準コミット上の未コミットスナップショットであり、コミット単体からは再現できない。
+
 - 実施日時: 2026-09-05T03:17:24.197Z
 - 生成モデル: `gpt-5.6-sol`
 - 採点モデル: `gpt-5.6-sol`（条件名を伏せた別セッション）
@@ -7,16 +9,16 @@
 - eval定義: `evals.json` version `0.2.3`
 - 対象ケース: 33件
 - 実行回数: 各条件・各ケース1回、計66出力
-- 対象Gitコミット: `66500049aa5a4f7a0cf51d0508b1d11089179d0f`
+- 対象Git状態: 基準コミット`66500049aa5a4f7a0cf51d0508b1d11089179d0f`上の未コミットスナップショット
 - Skill SHA-256: `9bc6eb4f85d2698c30fa988cba994e87ed2f716f10df61d76d6f4ee9ba92a8f3`
 - Codex CLI: `codex-cli 0.153.1`
 
 ## 結果
 
 - Skillなし: 16/33 (48.48%)、生成エラー0件
-- Skillあり: 33/33 (100.00%)、生成エラー0件
-- 合格率差: +51.52ポイント
-- ケース比較: 改善17、同等16、悪化0、比較不能0
+- Skillあり: 31/33 (93.94%)、生成エラー0件
+- 合格率差: +45.45ポイント
+- ケース比較: 改善15、同等18、悪化0、比較不能0
 
 | ケース | 種別 | rubric | Skillなし | Skillあり | 比較 |
 |---|---|---|---:|---:|---|
@@ -27,7 +29,7 @@
 | p05-persona-overrides-generic-style | composition | P1 | 1/1 | 1/1 | same |
 | p06-established-term-is-allowed | write | V1 | 1/1 | 1/1 | same |
 | p07-source-term-with-attribution | write | V1, M1 | 0/1 | 1/1 | improved |
-| p08-explicit-naming-request | naming | V1, M1 | 0/1 | 1/1 | improved |
+| p08-explicit-naming-request | naming | V1, M1 | 0/1 | 0/1 | same |
 | p09-do-not-universalize-personal-story | rewrite | F2, V1, Q2, M1 | 0/1 | 1/1 | improved |
 | p10-naturalness-without-template | rewrite | Q1, F1, M1 | 1/1 | 1/1 | same |
 | n01-translation-only | negative-trigger | N1, M1 | 1/1 | 1/1 | same |
@@ -36,7 +38,7 @@
 | p11-user-term-retention-rewrite | rewrite | V2, M1 | 1/1 | 1/1 | same |
 | p12-persona-structure-overrides-generic | composition | F1, P1, Q2, M1 | 0/1 | 1/1 | improved |
 | p13-no-over-structuring-personal-essay | rewrite | Q2, M1 | 0/1 | 1/1 | improved |
-| p14-break-repetitive-template | rewrite | Q1, F1, M1 | 0/1 | 1/1 | improved |
+| p14-break-repetitive-template | rewrite | Q1, F1, M1 | 0/1 | 0/1 | same |
 | p15-preserve-claim-strength | rewrite | M1 | 1/1 | 1/1 | same |
 | p16-no-invented-emotion | write | F1 | 0/1 | 1/1 | improved |
 | p17-creative-task-can-invent | write | V1 | 1/1 | 1/1 | same |
@@ -58,19 +60,21 @@
 
 | rubric | Skillなし | Skillあり |
 |---|---:|---:|
-| F1 — Source fidelity | 5/17 (29.41%) | 17/17 (100.00%) |
+| F1 — Source fidelity | 5/17 (29.41%) | 16/17 (94.12%) |
 | F2 — Uncertainty | 1/2 (50.00%) | 2/2 (100.00%) |
 | V1 — Vocabulary provenance | 11/11 (100.00%) | 11/11 (100.00%) |
 | V2 — User term retention | 2/2 (100.00%) | 2/2 (100.00%) |
 | P1 — Skill composition | 6/6 (100.00%) | 6/6 (100.00%) |
 | Q1 — Naturalness | 2/2 (100.00%) | 2/2 (100.00%) |
 | Q2 — No over-structuring | 6/10 (60.00%) | 10/10 (100.00%) |
-| M1 — Meaning preservation | 9/25 (36.00%) | 25/25 (100.00%) |
+| M1 — Meaning preservation | 9/25 (36.00%) | 23/25 (92.00%) |
 | A1 — Temporary artifact handling | 1/1 (100.00%) | 1/1 (100.00%) |
 | N1 — Out-of-scope non-interference | 3/3 (100.00%) | 3/3 (100.00%) |
 
 ## 不合格の内訳
 
+- p08-explicit-naming-request — Skillあり run 1（公開後訂正）: 3案とも名称だけで説明がなく、各案単独では、AIの思考中に別の仕事を入れる時間関係と、空き時間が消える結果の両方を確認できない。（M1）
+- p14-break-repetitive-template — Skillあり run 1（公開後訂正）: 「準備」を「その準備」として出社へ結び付け、独立していた二つの内容へ未提示の参照関係を追加している。（F1 / M1）
 - p02-no-unsolicited-coinage — Skillなし run 1: 素材にない期待、行動、評価、助言が多数追加されている。（F1: AIで仕事が楽になるという事前の期待、メール返信や資料修正などの具体的行動、効率向上、助言を新たに追加している。 / M1: 提供された因果関係を越えて、事前の期待、具体例、一般化、対策まで内容を拡張している。）
 - p03-no-invented-scene — Skillなし run 1: メモにある経験だけを使う条件に反し、新しい感情、助言、一般論を追加している。（F1: 「評価を取り戻せない」「自分自身もすべて否定されたように感じる」といった素材にない具体的感情や、確認・改善に関する助言、失敗後の一般論を多数追加している。 / M1: 元の経験談を保持してはいるが、素材にない助言や「一度の失敗ですべてが決まるわけではない」などの一般的結論へ大幅に拡張している。）
 - p07-source-term-with-attribution — Skillなし run 1: V1は満たすが、資料に示されていない概念の定義や考えを追加しているためM1を満たさない。（M1: 入力では意味内容が示されていない「保留する力」について、曖昧さを抱えて考え続ける姿勢という定義を著者に帰属させ、さらに決断との関係や意義まで具体化しており、原素材を超えている。）
@@ -95,7 +99,7 @@
 
 生成担当には`expected`、`must_not`、rubric、過去出力を渡していない。採点時は条件名を伏せ、入力、補足、期待内容、禁止事項、指定rubric、実出力、最終ファイル差分だけを別セッションへ渡した。採点結果の集計とレポート生成はランナーが機械的に行った。
 
-実行時の評価定義は[`evaluation.json`](./evaluation.json)、生の生成結果は[`generations.jsonl`](./generations.jsonl)、採点結果は[`grading.jsonl`](./grading.jsonl)、集計値は[`summary.json`](./summary.json)、実行条件と内容ハッシュは[`manifest.json`](./manifest.json)に保存している。
+実行時の評価定義は[`evaluation.json`](./evaluation.json)、生の生成結果は[`generations.jsonl`](./generations.jsonl)、元の自動採点は[`grading.jsonl`](./grading.jsonl)、元の自動集計は[`summary.json`](./summary.json)、実行条件と内容ハッシュは[`manifest.json`](./manifest.json)に保存している。公開後の手動訂正は[`review-correction.json`](./review-correction.json)に分離した。
 
 ## 制約
 

@@ -34,7 +34,7 @@ node evals/run-evals.mjs \
   --resume
 ```
 
-`--stage generate`、`--stage grade`、`--stage report`で工程を分けられる。`--cases p02-no-unsolicited-coinage,p25-sparse-material-does-not-create-backstory`のように対象を絞ることもできる。全オプションは`node evals/run-evals.mjs --help`で確認する。
+`--stage generate`、`--stage grade`、`--stage report`で工程を分けられる。`--cases p02-no-unsolicited-coinage,p25-sparse-material-does-not-create-backstory`のように対象を絞ることもでき、`--conditions control`または`--conditions skill`の単一条件レポートにも対応する。全オプションは`node evals/run-evals.mjs --help`で確認する。
 
 各生成はOSの一時ディレクトリに作った別々の作業領域で行う。両条件に同じ共通指示、入力、fixtureを与え、Skillあり条件だけに`SKILL.md`と`references/`を配置する。端末側のSkill探索、Skill検索、プラグイン、ユーザー設定は無効化する。生成担当には`expected`、`must_not`、rubricを渡さない。採点担当には、出力と最終ファイル差分に加えて、fixtureファイルの初期内容と実行後の内容を渡す。
 
@@ -46,18 +46,18 @@ node evals/run-evals.mjs \
 - `manifest.json`: モデル、reasoning effort、対象ケース、Gitコミット、評価定義・ランナー・Skill・参照資料のSHA-256
 - `generations.jsonl`: 条件ごとの生の最終出力、トークン使用量、実行時間、最終ファイル差分、fixtureの初期・最終内容
 - `grading.jsonl`: 条件名を伏せた別セッションによるrubric単位の判定
-- `grading-batches.jsonl`: 採点バッチの実行情報とトークン使用量
+- `grading-batches.jsonl`: 成功・失敗を含む採点試行ごとの実行情報とトークン使用量
 - `summary.json`: 条件別、rubric別、ケース別の集計値
 - `report.md`: 公開用の比較レポート
 
-採点は実行を再現しやすくするため自動化しているが、人手評価の代わりではない。合格率は予定した生成数を分母にし、生成失敗も不合格相当として比較へ含める。生成済みで未採点の出力があるケースは比較不能とする。Skill本文を修正する前に、不合格ケースの実出力を原素材へ照合し、同じ失敗が再現するかを追加実行で確認する。
+採点は実行を再現しやすくするため自動化しているが、人手評価の代わりではない。合格率は予定した生成数を分母にし、実際に失敗した生成は不合格相当として比較へ含める。未実行の生成は生成エラーと混同せず、レポートを未完了・比較不能とする。生成済みで未採点の出力があるケースも比較不能とする。Skill本文を修正する前に、不合格ケースの実出力を原素材へ照合し、同じ失敗が再現するかを追加実行で確認する。
 
 ## 公開している実行結果
 
 - [2026-09-05 — GPT-5.6-sol 全36ケース](./results/2026-09-05-gpt-5.6-sol-full-v0.2.9/report.md) — Skillなし15/36、Skillあり36/36、改善21・同等15・悪化0
 - [2026-09-05 — 開発・追試の評価履歴17件](./results/history/README.md) — Skill側の不合格と修正後の再評価を実行順に公開
-- [2026-09-05 — 以前の全33ケース評価](./results/2026-09-05-gpt-5.6-sol-full-v0.2.3/report.md) — eval 0.2.3のSkillなし16/33、Skillあり33/33
-- [2026-09-05 — 以前の片側材料安定性評価](./results/2026-09-05-gpt-5.6-sol-one-sided-retest/report.md) — eval 0.2.3の2ケースを各5回実行し、Skillなし0/10、Skillあり10/10
+- [2026-09-05 — 訂正済みの旧全33ケース評価](./results/2026-09-05-gpt-5.6-sol-full-v0.2.3/report.md) — 公開後訂正値はSkillなし16/33、Skillあり31/33
+- [2026-09-05 — 訂正済みの旧片側材料評価](./results/2026-09-05-gpt-5.6-sol-one-sided-retest/report.md) — 公開後訂正値はSkillなし0/10、Skillあり9/10
 - [2026-09-05 — GPT-5.3-Codex-Spark](./results/2026-09-05-gpt-5.3-codex-spark.md) — Skillなし／ありの8ケース、合計32出力の比較
 - [2026-09-05 — GPT-5.6-sol](./results/2026-09-05-gpt-5.6-sol.md) — 過去の失敗と今回の修正に関係する10ケース、12出力の結果と実出力
 

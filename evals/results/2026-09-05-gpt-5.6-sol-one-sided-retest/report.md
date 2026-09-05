@@ -1,5 +1,7 @@
 # ReferyTale 比較評価 — gpt-5.6-sol
 
+> **公開後訂正:** 手動再確認により、Skillありのp30 run 3を不合格へ訂正した。訂正後は9/10である。元の自動採点データは監査用に保持し、訂正内容は[`review-correction.json`](./review-correction.json)を正本とする。また、この実行は基準コミット上の未コミットスナップショットであり、コミット単体からは再現できない。
+
 - 実施日時: 2026-09-05T03:14:38.991Z
 - 生成モデル: `gpt-5.6-sol`
 - 採点モデル: `gpt-5.6-sol`（条件名を伏せた別セッション）
@@ -7,39 +9,40 @@
 - eval定義: `evals.json` version `0.2.3`
 - 対象ケース: 2件
 - 実行回数: 各条件・各ケース5回、計20出力
-- 対象Gitコミット: `66500049aa5a4f7a0cf51d0508b1d11089179d0f`
+- 対象Git状態: 基準コミット`66500049aa5a4f7a0cf51d0508b1d11089179d0f`上の未コミットスナップショット
 - Skill SHA-256: `9bc6eb4f85d2698c30fa988cba994e87ed2f716f10df61d76d6f4ee9ba92a8f3`
 - Codex CLI: `codex-cli 0.153.1`
 
 ## 結果
 
 - Skillなし: 0/10 (0.00%)、生成エラー0件
-- Skillあり: 10/10 (100.00%)、生成エラー0件
-- 合格率差: +100.00ポイント
+- Skillあり: 9/10 (90.00%)、生成エラー0件
+- 合格率差: +90.00ポイント
 - ケース比較: 改善2、同等0、悪化0、比較不能0
 
 | ケース | 種別 | rubric | Skillなし | Skillあり | 比較 |
 |---|---|---|---:|---:|---|
 | p02-no-unsolicited-coinage | write | F1, V1, M1 | 0/5 | 5/5 | improved |
-| p30-one-sided-material-stays-one-sided | write | F1, V1, M1, Q2 | 0/5 | 5/5 | improved |
+| p30-one-sided-material-stays-one-sided | write | F1, V1, M1, Q2 | 0/5 | 4/5 | improved |
 
 ## rubric別
 
 | rubric | Skillなし | Skillあり |
 |---|---:|---:|
-| F1 — Source fidelity | 0/10 (0.00%) | 10/10 (100.00%) |
+| F1 — Source fidelity | 0/10 (0.00%) | 9/10 (90.00%) |
 | F2 — Uncertainty | — | — |
 | V1 — Vocabulary provenance | 9/10 (90.00%) | 10/10 (100.00%) |
 | V2 — User term retention | — | — |
 | P1 — Skill composition | — | — |
 | Q1 — Naturalness | — | — |
 | Q2 — No over-structuring | 0/5 (0.00%) | 5/5 (100.00%) |
-| M1 — Meaning preservation | 0/10 (0.00%) | 10/10 (100.00%) |
+| M1 — Meaning preservation | 0/10 (0.00%) | 9/10 (90.00%) |
 | A1 — Temporary artifact handling | — | — |
 | N1 — Out-of-scope non-interference | — | — |
 
 ## 不合格の内訳
 
+- p30-one-sided-material-stays-one-sided — Skillあり run 3（公開後訂正）: 「収納箱を増やすことが、そのまま探しやすさにつながるとは限らない」と、材料になかった肯定側の評価軸を否定形で追加している。（F1 / M1）
 - p02-no-unsolicited-coinage — Skillなし run 1: 素材にない期待・具体的行動・事実・助言が多数追加されている。（F1: 「仕事が楽になるはずだった」という事前の期待、メール返信や資料修正などの具体例、AIが作業を速くしたという事実、休むための助言を追加している。 / M1: 提示された疲労の因果関係を超え、AIによる高速化、余白の扱い、立ち止まるべきだという結論まで付加している。）
 - p02-no-unsolicited-coinage — Skillなし run 2: 素材にない具体的行動、効果、助言を加えており、F1とM1を満たさない。（F1: 作業時間が短くなる、メール返信や資料修正、処理量の増加、頭を休める隙、AIの速さなど、素材にない事実や具体例を追加し、さらに休息を勧めている。 / M1: 中心の因果関係は残るが、効率化による処理量増加や休息の必要性という別の主張を加え、素材の意味の範囲を広げている。）
 - p02-no-unsolicited-coinage — Skillなし run 3: 事前の期待を含む複数の素材外命題と助言があり、F1とM1を満たさない。（F1: AIで仕事が楽になると思っていたという事前の期待、メール返信や資料修正などの具体例、集中力についての一般論、時間の使い方への助言を追加している。 / M1: 原素材の因果関係に、AIが暇を奪うという擬人的な説明、集中力の一般論、必要な技術という助言を加え、意味を拡張している。）
@@ -57,7 +60,7 @@
 
 生成担当には`expected`、`must_not`、rubric、過去出力を渡していない。採点時は条件名を伏せ、入力、補足、期待内容、禁止事項、指定rubric、実出力、最終ファイル差分だけを別セッションへ渡した。採点結果の集計とレポート生成はランナーが機械的に行った。
 
-実行時の評価定義は[`evaluation.json`](./evaluation.json)、生の生成結果は[`generations.jsonl`](./generations.jsonl)、採点結果は[`grading.jsonl`](./grading.jsonl)、集計値は[`summary.json`](./summary.json)、実行条件と内容ハッシュは[`manifest.json`](./manifest.json)に保存している。
+実行時の評価定義は[`evaluation.json`](./evaluation.json)、生の生成結果は[`generations.jsonl`](./generations.jsonl)、元の自動採点は[`grading.jsonl`](./grading.jsonl)、元の自動集計は[`summary.json`](./summary.json)、実行条件と内容ハッシュは[`manifest.json`](./manifest.json)に保存している。公開後の手動訂正は[`review-correction.json`](./review-correction.json)に分離した。
 
 ## 制約
 
