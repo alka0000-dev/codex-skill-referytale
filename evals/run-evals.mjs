@@ -19,6 +19,7 @@ import { constants as fsConstants } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const EVALS_DIRECTORY = path.dirname(SCRIPT_PATH);
@@ -27,7 +28,7 @@ const DEFAULT_MODEL = 'gpt-5.6-sol';
 const CONDITIONS = new Set(['control', 'skill']);
 const STAGES = new Set(['generate', 'grade', 'report', 'all']);
 const REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
-const HARNESS_VERSION = '3';
+const HARNESS_VERSION = '4';
 
 const COMMON_AGENTS = `# Isolated evaluation workspace
 
@@ -257,6 +258,9 @@ export function validateEvaluation(evaluation) {
       if (!isSafeRelativePath(fixtureFile.path)) {
         errors.push(`${label} has an unsafe fixture path: ${fixtureFile.path}`);
       }
+      if (typeof fixtureFile.content !== 'string') {
+        errors.push(`${label} fixture content must be a string: ${fixtureFile.path}`);
+      }
     }
   }
 
@@ -340,22 +344,39 @@ async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'));
 }
 
-async function readJsonLines(filePath) {
+export async function readJsonLines(filePath) {
   if (!(await fileExists(filePath))) {
     return [];
   }
 
   const content = await readFile(filePath, 'utf8');
-  return content
-    .split(/\r?\n/u)
-    .filter((line) => line.trim().length > 0)
-    .map((line, index) => {
-      try {
-        return JSON.parse(line);
-      } catch (error) {
+  const lines = content.split(/\r?\n/u);
+  const hasTerminatingLineBreak = content.endsWith('\n');
+  const records = [];
+
+  for (const [index, line] of lines.entries()) {
+    if (line.trim().length === 0) {
+      if (index === lines.length - 1 && !hasTerminatingLineBreak) {
+        const lastLineBreak = content.lastIndexOf('\n');
+        await writeFile(filePath, lastLineBreak >= 0 ? content.slice(0, lastLineBreak + 1) : '', 'utf8');
+      }
+      continue;
+    }
+
+    try {
+      records.push(JSON.parse(line));
+    } catch (error) {
+      const isUnterminatedFinalRecord = index === lines.length - 1 && !hasTerminatingLineBreak;
+      if (!isUnterminatedFinalRecord) {
         throw new Error(`Invalid JSONL at ${filePath}:${index + 1}: ${error.message}`);
       }
-    });
+
+      const lastLineBreak = content.lastIndexOf('\n');
+      await writeFile(filePath, lastLineBreak >= 0 ? content.slice(0, lastLineBreak + 1) : '', 'utf8');
+    }
+  }
+
+  return records;
 }
 
 async function appendJsonLine(filePath, value) {
@@ -660,6 +681,27 @@ async function prepareWorkspace(root, task, skillContent) {
   }
 }
 
+async function captureFixtureFiles(root, evaluationCase) {
+  return Promise.all((evaluationCase.fixture?.files ?? []).map(async (fixtureFile) => {
+    const filePath = resolveInside(root, fixtureFile.path);
+    let finalContent = null;
+
+    try {
+      finalContent = await readFile(filePath, 'utf8');
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        throw error;
+      }
+    }
+
+    return {
+      path: fixtureFile.path,
+      initial_content: fixtureFile.content,
+      final_content: finalContent,
+    };
+  }));
+}
+
 function buildGenerationPrompt(evaluationCase) {
   const context = evaluationCase.context
     ? `\n## 補足コンテキスト\n\n${evaluationCase.context}\n`
@@ -708,6 +750,7 @@ async function executeGeneration(task, options, temporaryRoot, skillContent, cod
   const parsed = parseCodexEvents(result.stdout);
   const after = await snapshotWorkspace(workspace);
   const changes = compareSnapshots(before, after);
+  const fixtureFiles = await captureFixtureFiles(workspace, task.evaluationCase);
   const gitStatus = task.evaluationCase.fixture?.git_repo
     ? runLocalProcess('git', ['status', '--porcelain=v1', '--untracked-files=all'], workspace)
     : undefined;
@@ -725,6 +768,7 @@ async function executeGeneration(task, options, temporaryRoot, skillContent, cod
     output: parsed.finalMessage,
     usage: parsed.usage,
     workspace_changes: changes,
+    fixture_files: fixtureFiles,
     git_status: gitStatus,
     started_at: startedAt.toISOString(),
     finished_at: finishedAt.toISOString(),
@@ -785,6 +829,10 @@ async function createManifest(evaluation, options, plan) {
     referenceHashes[relativePath] = sha256(await readFile(referencePath));
   }
 
+  const caseIds = [...new Set(plan.map((task) => task.caseId))];
+  const evaluationSnapshot = buildEvaluationSnapshot(evaluation, caseIds);
+  const evaluationSnapshotContent = `${JSON.stringify(evaluationSnapshot, null, 2)}\n`;
+
   let gitCommit;
   let gitDirty;
   try {
@@ -822,7 +870,7 @@ async function createManifest(evaluation, options, plan) {
     harness_version: HARNESS_VERSION,
     eval_version: evaluation.version,
     eval_file: 'evals/evals.json',
-    case_ids: [...new Set(plan.map((task) => task.caseId))],
+    case_ids: caseIds,
     model: options.model,
     grader_model: options.graderModel,
     reasoning_effort: options.reasoning,
@@ -831,6 +879,8 @@ async function createManifest(evaluation, options, plan) {
     planned_generations: plan.length,
     concurrency: options.concurrency,
     grader_batch_size: options.graderBatchSize,
+    grader_retries: options.graderRetries,
+    timeout_seconds: options.timeoutSeconds,
     codex_home_isolated: options.isolateCodexHome,
     codex_cli_version: cliVersion,
     git_commit: gitCommit,
@@ -838,6 +888,8 @@ async function createManifest(evaluation, options, plan) {
     runner_sha256: sha256(await readFile(SCRIPT_PATH, 'utf8')),
     skill_sha256: sha256(skillContent),
     reference_sha256: referenceHashes,
+    evaluation_snapshot_file: 'evaluation.json',
+    evaluation_snapshot_sha256: sha256(evaluationSnapshotContent),
   };
 }
 
@@ -846,52 +898,51 @@ async function runGenerationStage(evaluation, options, plan, outputDirectory, ma
   const previousRecords = await readJsonLines(generationPath);
   const previousByKey = latestRecordsByKey(previousRecords);
   const remainingTasks = plan.filter((task) => previousByKey.get(task.key)?.status !== 'success');
-  const skillContent = await readFile(path.join(REPOSITORY_ROOT, 'SKILL.md'), 'utf8');
-  const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'referytale-eval-'));
-  const codexRuntime = await prepareCodexEnvironment(temporaryRoot, options);
-  manifest.authentication_mode = codexRuntime.authMode;
   let completed = plan.length - remainingTasks.length;
 
   if (remainingTasks.length === 0) {
     console.log('Generation stage already complete.');
-    return;
-  }
+  } else {
+    const skillContent = await readFile(path.join(REPOSITORY_ROOT, 'SKILL.md'), 'utf8');
+    const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'referytale-eval-'));
+    const codexRuntime = await prepareCodexEnvironment(temporaryRoot, options);
+    manifest.authentication_mode = codexRuntime.authMode;
+    console.log(`Generating ${remainingTasks.length} outputs (${completed}/${plan.length} already complete).`);
 
-  console.log(`Generating ${remainingTasks.length} outputs (${completed}/${plan.length} already complete).`);
-
-  try {
-    await runPool(
-      remainingTasks,
-      options.concurrency,
-      (task) => executeGeneration(
-        task,
-        options,
-        temporaryRoot,
-        skillContent,
-        codexRuntime.environment,
-      ),
-      async (record) => {
-        await appendJsonLine(generationPath, record);
-        completed += 1;
-        const seconds = (record.duration_ms / 1000).toFixed(1);
-        console.log(
-          `[${completed}/${plan.length}] ${record.status.toUpperCase()} ${record.condition} ${record.case_id} #${record.repetition} (${seconds}s)`,
-        );
-      },
-    );
-  } finally {
-    if (options.keepWorkspaces) {
-      console.log(`Workspaces kept at ${temporaryRoot}`);
-    } else {
-      const resolvedTemporaryRoot = path.resolve(temporaryRoot);
-      const resolvedSystemTemp = path.resolve(tmpdir());
-      if (resolvedTemporaryRoot.startsWith(`${resolvedSystemTemp}${path.sep}`)) {
-        await rm(resolvedTemporaryRoot, {
-          recursive: true,
-          force: true,
-          maxRetries: 5,
-          retryDelay: 100,
-        });
+    try {
+      await runPool(
+        remainingTasks,
+        options.concurrency,
+        (task) => executeGeneration(
+          task,
+          options,
+          temporaryRoot,
+          skillContent,
+          codexRuntime.environment,
+        ),
+        async (record) => {
+          await appendJsonLine(generationPath, record);
+          completed += 1;
+          const seconds = (record.duration_ms / 1000).toFixed(1);
+          console.log(
+            `[${completed}/${plan.length}] ${record.status.toUpperCase()} ${record.condition} ${record.case_id} #${record.repetition} (${seconds}s)`,
+          );
+        },
+      );
+    } finally {
+      if (options.keepWorkspaces) {
+        console.log(`Workspaces kept at ${temporaryRoot}`);
+      } else {
+        const resolvedTemporaryRoot = path.resolve(temporaryRoot);
+        const resolvedSystemTemp = path.resolve(tmpdir());
+        if (resolvedTemporaryRoot.startsWith(`${resolvedSystemTemp}${path.sep}`)) {
+          await rm(resolvedTemporaryRoot, {
+            recursive: true,
+            force: true,
+            maxRetries: 5,
+            retryDelay: 100,
+          });
+        }
       }
     }
   }
@@ -943,7 +994,7 @@ function blindId(runId, key) {
   return `sample-${sha256(`${runId}|${key}`).slice(0, 12)}`;
 }
 
-function buildGraderPrompt(evaluation, samples) {
+export function buildGraderPrompt(evaluation, samples) {
   const payload = {
     rubrics: evaluation.rubrics,
     samples: samples.map((sample) => ({
@@ -956,6 +1007,7 @@ function buildGraderPrompt(evaluation, samples) {
       rubric_ids: sample.evaluationCase.rubric,
       output: sample.generation.output,
       workspace_changes: sample.generation.workspace_changes,
+      fixture_files: sample.generation.fixture_files ?? [],
       git_status: sample.generation.git_status,
     })),
   };
@@ -1206,13 +1258,18 @@ export function summarizeResults(evaluation, manifest, generationRecords, gradeR
   for (const condition of manifest.conditions) {
     const generations = [...generationByKey.values()].filter((record) => record.condition === condition);
     const grades = [...gradeByKey.values()].filter((record) => record.condition === condition);
+    const planned = manifest.case_ids.length * manifest.repetitions;
+    const generated = generations.filter((record) => record.status === 'success').length;
+    const pass = grades.filter((record) => record.overall === 'pass').length;
+    const fail = grades.filter((record) => record.overall === 'fail').length;
     conditionSummary[condition] = {
-      planned: manifest.case_ids.length * manifest.repetitions,
-      generated: generations.filter((record) => record.status === 'success').length,
-      generation_errors: generations.filter((record) => record.status !== 'success').length,
-      graded: grades.length,
-      pass: grades.filter((record) => record.overall === 'pass').length,
-      fail: grades.filter((record) => record.overall === 'fail').length,
+      planned,
+      generated,
+      generation_errors: planned - generated,
+      graded: pass + fail,
+      ungraded: Math.max(0, generated - pass - fail),
+      pass,
+      fail,
     };
     rubricSummary[condition] = {};
 
@@ -1250,11 +1307,16 @@ export function summarizeResults(evaluation, manifest, generationRecords, gradeR
 
     let comparison = 'not-comparable';
     if (conditions.control && conditions.skill) {
-      const controlGraded = conditions.control.pass + conditions.control.fail;
-      const skillGraded = conditions.skill.pass + conditions.skill.fail;
-      if (controlGraded > 0 && skillGraded > 0) {
-        const controlRate = conditions.control.pass / controlGraded;
-        const skillRate = conditions.skill.pass / skillGraded;
+      const controlAttempts = conditions.control.pass + conditions.control.fail + conditions.control.error;
+      const skillAttempts = conditions.skill.pass + conditions.skill.fail + conditions.skill.error;
+      if (
+        controlAttempts > 0
+        && skillAttempts > 0
+        && conditions.control.ungraded === 0
+        && conditions.skill.ungraded === 0
+      ) {
+        const controlRate = conditions.control.pass / controlAttempts;
+        const skillRate = conditions.skill.pass / skillAttempts;
         comparison = skillRate > controlRate
           ? 'improved'
           : skillRate < controlRate
@@ -1300,15 +1362,15 @@ function formatCaseCondition(value) {
   const suffix = [];
   if (value.error > 0) suffix.push(`error ${value.error}`);
   if (value.ungraded > 0) suffix.push(`ungraded ${value.ungraded}`);
-  const main = `${value.pass}/${value.pass + value.fail}`;
+  const main = `${value.pass}/${value.pass + value.fail + value.error + value.ungraded}`;
   return suffix.length > 0 ? `${main}; ${suffix.join(', ')}` : main;
 }
 
 export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords) {
   const control = summary.condition_summary.control;
   const skill = summary.condition_summary.skill;
-  const effect = control && skill && control.graded > 0 && skill.graded > 0
-    ? percentage(skill.pass, skill.graded) - percentage(control.pass, control.graded)
+  const effect = control && skill && control.ungraded === 0 && skill.ungraded === 0
+    ? percentage(skill.pass, skill.planned) - percentage(control.pass, control.planned)
     : undefined;
   const isFullEvaluation = manifest.case_ids.length === evaluation.cases.length;
   const reportScope = isFullEvaluation ? '全件比較評価' : '比較評価';
@@ -1331,10 +1393,10 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
   ];
 
   if (control) {
-    lines.push(`- Skillなし: ${formatRate(control.pass, control.graded)}、生成エラー${control.generation_errors}件`);
+    lines.push(`- Skillなし: ${formatRate(control.pass, control.planned)}、生成エラー${control.generation_errors}件、未採点${control.ungraded}件`);
   }
   if (skill) {
-    lines.push(`- Skillあり: ${formatRate(skill.pass, skill.graded)}、生成エラー${skill.generation_errors}件`);
+    lines.push(`- Skillあり: ${formatRate(skill.pass, skill.planned)}、生成エラー${skill.generation_errors}件、未採点${skill.ungraded}件`);
   }
   if (effect !== undefined) {
     const sign = effect > 0 ? '+' : '';
@@ -1386,16 +1448,18 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
     '',
     '## 方法',
     '',
-    '各生成は別の一時作業フォルダで実行した。両条件へ同じ共通指示、モデル、reasoning effort、入力、fixtureを与え、Skillあり条件だけに現行の`SKILL.md`と`references/`を追加した。端末にインストール済みのSkill探索、Skill検索、プラグイン、ユーザー設定は無効化した。',
+    manifest.codex_home_isolated
+      ? '各生成は別の一時作業フォルダと隔離`CODEX_HOME`で実行した。両条件へ同じ共通指示、モデル、reasoning effort、入力、fixtureを与え、Skillあり条件だけに現行の`SKILL.md`と`references/`を追加した。端末にインストール済みのSkill探索、Skill検索、プラグイン、ユーザー設定は無効化した。'
+      : '各生成は別の一時作業フォルダで実行したが、通常の`CODEX_HOME`を継承した。ユーザー設定やユーザー指示が結果へ影響した可能性がある。両条件へ同じ共通指示、モデル、reasoning effort、入力、fixtureを与え、Skillあり条件だけに現行の`SKILL.md`と`references/`を追加した。',
     '',
-    '生成担当には`expected`、`must_not`、rubric、過去出力を渡していない。採点時は条件名を伏せ、入力、補足、期待内容、禁止事項、指定rubric、実出力、最終ファイル差分だけを別セッションへ渡した。採点結果の集計とレポート生成はランナーが機械的に行った。',
+    '生成担当には`expected`、`must_not`、rubric、過去出力を渡していない。採点時は条件名を伏せ、入力、補足、期待内容、禁止事項、指定rubric、実出力、fixtureの初期・最終内容、最終ファイル差分を別セッションへ渡した。採点結果の集計とレポート生成はランナーが機械的に行った。',
     '',
     '実行時の評価定義は[`evaluation.json`](./evaluation.json)、生の生成結果は[`generations.jsonl`](./generations.jsonl)、採点結果は[`grading.jsonl`](./grading.jsonl)、集計値は[`summary.json`](./summary.json)、実行条件と内容ハッシュは[`manifest.json`](./manifest.json)に保存している。',
     '',
     '## 制約',
     '',
     `- 単一の生成モデル、単一のreasoning effortで、各条件・各ケース${manifest.repetitions}回実行した評価である`,
-    '- 採点は生成と同じモデルの別セッションで行っており、独立した人手評価ではない',
+    `- 採点は\`${manifest.grader_model}\`の別セッションで行っており、独立した人手評価ではない`,
     '- 条件名は伏せているが、出力の特徴からSkill条件を推測できる可能性は残る',
     '- 内部でProvenance Tableを作ったかなど、最終出力から観察できない工程は点数へ含めていない',
     `- 合格率差は今回の${manifest.case_ids.length}ケース内の差であり、あらゆる日本語文章タスクへ一般化できない`,
@@ -1422,19 +1486,48 @@ async function runReportStage(evaluation, outputDirectory, manifest) {
   console.log(`Report written to ${path.join(outputDirectory, 'report.md')}`);
 }
 
-async function loadOrCreateManifest(evaluation, options, plan) {
+const RESUME_MANIFEST_FIELDS = [
+  'schema_version',
+  'harness_version',
+  'eval_version',
+  'eval_file',
+  'case_ids',
+  'model',
+  'grader_model',
+  'reasoning_effort',
+  'conditions',
+  'repetitions',
+  'planned_generations',
+  'grader_batch_size',
+  'grader_retries',
+  'timeout_seconds',
+  'codex_home_isolated',
+  'codex_cli_version',
+  'runner_sha256',
+  'skill_sha256',
+  'reference_sha256',
+  'evaluation_snapshot_file',
+  'evaluation_snapshot_sha256',
+];
+
+export function assertResumeManifestMatches(existingManifest, currentManifest) {
+  const mismatchedFields = RESUME_MANIFEST_FIELDS.filter(
+    (field) => !isDeepStrictEqual(existingManifest[field], currentManifest[field]),
+  );
+
+  if (mismatchedFields.length > 0) {
+    throw new Error(`Resume manifest mismatch: ${mismatchedFields.join(', ')}`);
+  }
+}
+
+async function loadOrCreateManifest(options, currentManifest) {
   const manifestPath = path.join(options.output, 'manifest.json');
   if (await fileExists(manifestPath)) {
     const manifest = await readJson(manifestPath);
     if (!options.resume && (options.stage === 'all' || options.stage === 'generate')) {
       throw new Error(`Output already exists. Use --resume to continue: ${options.output}`);
     }
-    if (manifest.eval_version !== evaluation.version) {
-      throw new Error(`Eval version mismatch: result=${manifest.eval_version}, current=${evaluation.version}`);
-    }
-    if (manifest.model !== options.model || manifest.reasoning_effort !== options.reasoning) {
-      throw new Error('Model or reasoning effort does not match the existing manifest.');
-    }
+    assertResumeManifestMatches(manifest, currentManifest);
     return manifest;
   }
 
@@ -1442,7 +1535,7 @@ async function loadOrCreateManifest(evaluation, options, plan) {
     throw new Error(`manifest.json does not exist in ${options.output}`);
   }
 
-  return createManifest(evaluation, options, plan);
+  return currentManifest;
 }
 
 async function persistEvaluationSnapshot(evaluation, outputDirectory, manifest) {
@@ -1496,7 +1589,8 @@ async function main() {
   }
 
   await mkdir(options.output, { recursive: true });
-  const manifest = await loadOrCreateManifest(evaluation, options, plan);
+  const currentManifest = await createManifest(evaluation, options, plan);
+  const manifest = await loadOrCreateManifest(options, currentManifest);
   const manifestPath = path.join(options.output, 'manifest.json');
   await persistEvaluationSnapshot(evaluation, options.output, manifest);
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
