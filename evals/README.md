@@ -31,6 +31,7 @@ node evals/run-evals.mjs \
 ```shell
 node evals/run-evals.mjs \
   --output evals/results/2026-09-05-gpt-5.6-sol-full \
+  --concurrency 4 \
   --resume
 ```
 
@@ -50,11 +51,13 @@ node evals/run-evals.mjs \
 - `summary.json`: 条件別、rubric別、ケース別の集計値
 - `report.md`: 公開用の比較レポート
 
+`review-correction.json`がある結果では、公開後訂正を誤って消さないよう、ランナーによる`summary.json`と`report.md`の再生成を拒否する。訂正済み結果を作り直す場合は、生ログを変更せず、訂正内容を確認して新しい結果ディレクトリへ出力する。
+
 採点は実行を再現しやすくするため自動化しているが、人手評価の代わりではない。合格率は予定した生成数を分母にし、実際に失敗した生成は不合格相当として比較へ含める。未実行の生成は生成エラーと混同せず、レポートを未完了・比較不能とする。生成済みで未採点の出力があるケースも比較不能とする。Skill本文を修正する前に、不合格ケースの実出力を原素材へ照合し、同じ失敗が再現するかを追加実行で確認する。
 
 ## 公開している実行結果
 
-- [2026-09-05 — GPT-5.6-sol 全38ケース（公開後訂正あり）](./results/2026-09-05-gpt-5.6-sol-full-v0.2.22/report.md) — 訂正後はSkillなし16/38、Skillあり37/38、改善22・同等15・悪化1
+- [2026-09-05 — GPT-5.6-sol 全38ケース（公開後訂正あり）](./results/2026-09-05-gpt-5.6-sol-full-v0.2.22/report.md) — 訂正後はSkillなし15/38、Skillあり37/38、改善23・同等14・悪化1
 - [2026-09-05 — 開発・追試の評価履歴39件](./results/history/README.md) — Skill側の不合格と修正後の再評価を実行順に公開
 - [2026-09-05 — 訂正済みの旧全33ケース評価](./results/2026-09-05-gpt-5.6-sol-full-v0.2.3/report.md) — 公開後訂正値はSkillなし16/33、Skillあり31/33
 - [2026-09-05 — 訂正済みの旧片側材料評価](./results/2026-09-05-gpt-5.6-sol-one-sided-retest/report.md) — 公開後訂正値はSkillなし0/10、Skillあり9/10

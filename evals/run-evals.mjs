@@ -5,7 +5,6 @@ import { spawn, spawnSync } from 'node:child_process';
 import {
   access,
   appendFile,
-  cp,
   link,
   mkdir,
   mkdtemp,
@@ -28,7 +27,7 @@ const DEFAULT_MODEL = 'gpt-5.6-sol';
 const CONDITIONS = new Set(['control', 'skill']);
 const STAGES = new Set(['generate', 'grade', 'report', 'all']);
 const REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
-const HARNESS_VERSION = '6';
+const HARNESS_VERSION = '7';
 const FORCE_KILL_GRACE_MS = 1000;
 
 const COMMON_AGENTS = `# Isolated evaluation workspace
@@ -237,6 +236,7 @@ export function validateEvaluation(evaluation) {
   }
 
   const caseIds = new Set();
+  const workspaceSegments = new Map();
   const rubricIds = new Set(Object.keys(evaluation.rubrics ?? {}));
 
   for (const [index, evaluationCase] of evaluation.cases.entries()) {
@@ -253,6 +253,15 @@ export function validateEvaluation(evaluation) {
       errors.push(`Duplicate case ID: ${evaluationCase.id}`);
     } else {
       caseIds.add(evaluationCase.id);
+      const workspaceSegment = sanitizePathSegment(evaluationCase.id);
+      const conflictingCaseId = workspaceSegments.get(workspaceSegment);
+      if (conflictingCaseId && conflictingCaseId !== evaluationCase.id) {
+        errors.push(
+          `Case IDs ${conflictingCaseId} and ${evaluationCase.id} share workspace segment ${workspaceSegment}.`,
+        );
+      } else {
+        workspaceSegments.set(workspaceSegment, evaluationCase.id);
+      }
     }
 
     if (typeof evaluationCase.input !== 'string' || evaluationCase.input.length === 0) {
@@ -266,7 +275,12 @@ export function validateEvaluation(evaluation) {
     if (!Array.isArray(evaluationCase.rubric) || evaluationCase.rubric.length === 0) {
       errors.push(`${label}.rubric must contain at least one rubric ID.`);
     } else {
+      const caseRubricIds = new Set();
       for (const rubricId of evaluationCase.rubric) {
+        if (caseRubricIds.has(rubricId)) {
+          errors.push(`${label} contains duplicate rubric ${rubricId}.`);
+        }
+        caseRubricIds.add(rubricId);
         if (!rubricIds.has(rubricId)) {
           errors.push(`${label} references unknown rubric ${rubricId}.`);
         }
@@ -384,6 +398,9 @@ export async function readJsonLines(filePath) {
 
     try {
       records.push(JSON.parse(line));
+      if (index === lines.length - 1 && !hasTerminatingLineBreak) {
+        await writeFile(filePath, `${content}\n`, 'utf8');
+      }
     } catch (error) {
       const isUnterminatedFinalRecord = index === lines.length - 1 && !hasTerminatingLineBreak;
       if (!isUnterminatedFinalRecord) {
@@ -679,6 +696,23 @@ async function listFilesRecursively(root, current = root) {
   return files;
 }
 
+async function loadInstructionSnapshot() {
+  const skillContent = await readFile(path.join(REPOSITORY_ROOT, 'SKILL.md'), 'utf8');
+  const referencesRoot = path.join(REPOSITORY_ROOT, 'references');
+  const referencePaths = await listFilesRecursively(referencesRoot);
+  const referenceFiles = [];
+
+  for (const referencePath of referencePaths.sort()) {
+    const relativePath = path.relative(REPOSITORY_ROOT, referencePath).split(path.sep).join('/');
+    referenceFiles.push({
+      relativePath,
+      content: await readFile(referencePath),
+    });
+  }
+
+  return { skillContent, referenceFiles };
+}
+
 async function snapshotWorkspace(root) {
   const snapshot = {};
 
@@ -718,16 +752,20 @@ export function buildEvaluationSnapshot(evaluation, caseIds) {
   };
 }
 
-async function prepareWorkspace(root, task, skillContent) {
+export async function prepareWorkspace(root, task, instructionSnapshot) {
   await mkdir(root, { recursive: true });
 
   const agentsContent = task.condition === 'skill'
-    ? `${COMMON_AGENTS}\n# ReferyTale instructions\n\n${skillContent}`
+    ? `${COMMON_AGENTS}\n# ReferyTale instructions\n\n${instructionSnapshot.skillContent}`
     : COMMON_AGENTS;
   await writeFile(path.join(root, 'AGENTS.md'), agentsContent, 'utf8');
 
   if (task.condition === 'skill') {
-    await cp(path.join(REPOSITORY_ROOT, 'references'), path.join(root, 'references'), { recursive: true });
+    for (const referenceFile of instructionSnapshot.referenceFiles) {
+      const targetPath = resolveInside(root, referenceFile.relativePath);
+      await mkdir(path.dirname(targetPath), { recursive: true });
+      await writeFile(targetPath, referenceFile.content);
+    }
   }
 
   for (const fixtureFile of task.evaluationCase.fixture?.files ?? []) {
@@ -786,14 +824,14 @@ function redactWorkspace(text, workspace) {
     .slice(-4000);
 }
 
-async function executeGeneration(task, options, temporaryRoot, skillContent, codexEnvironment) {
+async function executeGeneration(task, options, temporaryRoot, instructionSnapshot, codexEnvironment) {
   const startedAt = new Date();
   const workspace = path.join(
     temporaryRoot,
     `${sanitizePathSegment(task.caseId)}-${task.condition}-${task.repetition}`,
   );
 
-  await prepareWorkspace(workspace, task, skillContent);
+  await prepareWorkspace(workspace, task, instructionSnapshot);
   const before = await snapshotWorkspace(workspace);
   const prompt = buildGenerationPrompt(task.evaluationCase);
   const invocation = codexInvocation();
@@ -887,15 +925,13 @@ function latestRecordsByKey(records, keyName = 'key') {
   return latest;
 }
 
-async function createManifest(evaluation, options, plan) {
-  const skillContent = await readFile(path.join(REPOSITORY_ROOT, 'SKILL.md'));
-  const referenceFiles = await listFilesRecursively(path.join(REPOSITORY_ROOT, 'references'));
-  const referenceHashes = {};
-
-  for (const referencePath of referenceFiles.sort()) {
-    const relativePath = path.relative(REPOSITORY_ROOT, referencePath).split(path.sep).join('/');
-    referenceHashes[relativePath] = sha256(await readFile(referencePath));
-  }
+async function createManifest(evaluation, options, plan, instructionSnapshot) {
+  const referenceHashes = Object.fromEntries(
+    instructionSnapshot.referenceFiles.map((referenceFile) => [
+      referenceFile.relativePath,
+      sha256(referenceFile.content),
+    ]),
+  );
 
   const caseIds = [...new Set(plan.map((task) => task.caseId))];
   const evaluationSnapshot = buildEvaluationSnapshot(evaluation, caseIds);
@@ -954,14 +990,21 @@ async function createManifest(evaluation, options, plan) {
     git_commit: gitCommit,
     git_dirty_at_start: gitDirty,
     runner_sha256: sha256(await readFile(SCRIPT_PATH, 'utf8')),
-    skill_sha256: sha256(skillContent),
+    skill_sha256: sha256(instructionSnapshot.skillContent),
     reference_sha256: referenceHashes,
     evaluation_snapshot_file: 'evaluation.json',
     evaluation_snapshot_sha256: sha256(evaluationSnapshotContent),
   };
 }
 
-async function runGenerationStage(evaluation, options, plan, outputDirectory, manifest) {
+async function runGenerationStage(
+  evaluation,
+  options,
+  plan,
+  outputDirectory,
+  manifest,
+  instructionSnapshot,
+) {
   const generationPath = path.join(outputDirectory, 'generations.jsonl');
   const previousRecords = await readJsonLines(generationPath);
   const previousByKey = latestRecordsByKey(previousRecords);
@@ -971,7 +1014,6 @@ async function runGenerationStage(evaluation, options, plan, outputDirectory, ma
   if (remainingTasks.length === 0) {
     console.log('Generation stage already complete.');
   } else {
-    const skillContent = await readFile(path.join(REPOSITORY_ROOT, 'SKILL.md'), 'utf8');
     const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'referytale-eval-'));
     const codexRuntime = await prepareCodexEnvironment(temporaryRoot, options);
     manifest.authentication_mode = codexRuntime.authMode;
@@ -985,7 +1027,7 @@ async function runGenerationStage(evaluation, options, plan, outputDirectory, ma
           task,
           options,
           temporaryRoot,
-          skillContent,
+          instructionSnapshot,
           codexRuntime.environment,
         ),
         async (record) => {
@@ -1515,6 +1557,8 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
   const reportScope = `${isFullEvaluation ? '全件' : ''}${isPaired ? '比較評価' : '単一条件評価'}`;
   const missingGenerationCount = Object.values(summary.condition_summary)
     .reduce((total, condition) => total + (condition.missing_generations ?? 0), 0);
+  const ungradedCount = Object.values(summary.condition_summary)
+    .reduce((total, condition) => total + (condition.ungraded ?? 0), 0);
   const gitState = manifest.git_commit === undefined
     || typeof manifest.git_dirty_at_start !== 'boolean'
     ? '`取得不能`（状態不明）'
@@ -1537,8 +1581,11 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
     '',
   ];
 
-  if (missingGenerationCount > 0) {
-    lines.push(`- 実行状態: 未完了（未生成${missingGenerationCount}件）`);
+  if (missingGenerationCount > 0 || ungradedCount > 0) {
+    const incompleteItems = [];
+    if (missingGenerationCount > 0) incompleteItems.push(`未生成${missingGenerationCount}件`);
+    if (ungradedCount > 0) incompleteItems.push(`未採点${ungradedCount}件`);
+    lines.push(`- 実行状態: 未完了（${incompleteItems.join('、')}）`);
   }
 
   if (control) {
@@ -1588,7 +1635,9 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
     .filter((record) => record.overall === 'fail')
     .sort((left, right) => left.key.localeCompare(right.key));
   lines.push('', '## 不合格の内訳', '');
-  if (failures.length === 0) {
+  if (ungradedCount > 0) {
+    lines.push('未採点の出力があるため、不合格の有無は未確定である。');
+  } else if (failures.length === 0) {
     lines.push('不合格はなかった。');
   } else {
     for (const failure of failures) {
@@ -1625,7 +1674,14 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
   return lines.join('\n');
 }
 
-async function runReportStage(evaluation, outputDirectory, manifest) {
+export async function runReportStage(evaluation, outputDirectory, manifest) {
+  const reviewCorrectionPath = path.join(outputDirectory, 'review-correction.json');
+  if (await fileExists(reviewCorrectionPath)) {
+    throw new Error(
+      `Refusing to regenerate a corrected report. Remove or apply ${reviewCorrectionPath} explicitly first.`,
+    );
+  }
+
   const generationRecords = await readJsonLines(path.join(outputDirectory, 'generations.jsonl'));
   const gradeRecords = [...latestRecordsByKey(
     await readJsonLines(path.join(outputDirectory, 'grading.jsonl')),
@@ -1654,6 +1710,7 @@ const RESUME_MANIFEST_FIELDS = [
   'conditions',
   'repetitions',
   'planned_generations',
+  'concurrency',
   'grader_batch_size',
   'grader_retries',
   'timeout_seconds',
@@ -1745,14 +1802,22 @@ async function main() {
   }
 
   await mkdir(options.output, { recursive: true });
-  const currentManifest = await createManifest(evaluation, options, plan);
+  const instructionSnapshot = await loadInstructionSnapshot();
+  const currentManifest = await createManifest(evaluation, options, plan, instructionSnapshot);
   const manifest = await loadOrCreateManifest(options, currentManifest);
   const manifestPath = path.join(options.output, 'manifest.json');
   await persistEvaluationSnapshot(evaluation, options.output, manifest);
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 
   if (options.stage === 'all' || options.stage === 'generate') {
-    await runGenerationStage(evaluation, options, plan, options.output, manifest);
+    await runGenerationStage(
+      evaluation,
+      options,
+      plan,
+      options.output,
+      manifest,
+      instructionSnapshot,
+    );
   }
   if (options.stage === 'all' || options.stage === 'grade') {
     await runGradingStage(evaluation, options, options.output, manifest);

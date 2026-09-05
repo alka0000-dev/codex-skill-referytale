@@ -14,8 +14,10 @@ import {
   executeGraderBatch,
   nextGradingBatchNumber,
   parseArguments,
+  prepareWorkspace,
   readJsonLines,
   runGradingStage,
+  runReportStage,
   runProcess,
   summarizeResults,
   validateEvaluation,
@@ -76,6 +78,18 @@ test('validateEvaluation rejects unknown rubrics and duplicate cases', () => {
   assert.ok(errors.some((error) => error.includes('Duplicate case ID')));
   assert.ok(errors.some((error) => error.includes('unknown rubric missing')));
   assert.ok(errors.some((error) => error.includes('fixture content must be a string')));
+});
+
+test('validateEvaluation rejects colliding workspace names and duplicate rubrics', () => {
+  const invalid = structuredClone(evaluation);
+  invalid.cases[0].rubric = ['F1', 'F1'];
+  invalid.cases.push({ ...invalid.cases[0], id: 'case/2', rubric: ['F1'] });
+  invalid.cases.push({ ...invalid.cases[0], id: 'case-2', rubric: ['F1'] });
+
+  const errors = validateEvaluation(invalid);
+
+  assert.ok(errors.some((error) => error.includes('duplicate rubric F1')));
+  assert.ok(errors.some((error) => error.includes('case/2 and case-2 share workspace segment case-2')));
 });
 
 test('buildGenerationPlan creates every case-condition-repetition combination', () => {
@@ -139,6 +153,7 @@ test('assertResumeManifestMatches rejects changed experimental inputs', () => {
     conditions: ['control', 'skill'],
     repetitions: 1,
     planned_generations: 2,
+    concurrency: 2,
     grader_batch_size: 4,
     grader_retries: 2,
     timeout_seconds: 120,
@@ -155,12 +170,13 @@ test('assertResumeManifestMatches rejects changed experimental inputs', () => {
 
   const changed = structuredClone(manifest);
   changed.case_ids.push('case-2');
+  changed.concurrency = 4;
   changed.grader_model = 'another-grader';
   changed.skill_sha256 = 'another-skill-hash';
 
   assert.throws(
     () => assertResumeManifestMatches(manifest, changed),
-    /case_ids, grader_model, skill_sha256/,
+    /case_ids, grader_model, concurrency, skill_sha256/,
   );
 });
 
@@ -195,6 +211,49 @@ test('readJsonLines repairs an unterminated trailing record', async () => {
 
     assert.deepEqual(records, [{ id: 1 }]);
     assert.equal(await readFile(filePath, 'utf8'), '{"id":1}\n');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('readJsonLines terminates a valid final record before later appends', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'referytale-jsonl-test-'));
+  const filePath = path.join(directory, 'records.jsonl');
+
+  try {
+    await writeFile(filePath, '{"id":1}', 'utf8');
+
+    const records = await readJsonLines(filePath);
+
+    assert.deepEqual(records, [{ id: 1 }]);
+    assert.equal(await readFile(filePath, 'utf8'), '{"id":1}\n');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('prepareWorkspace writes the supplied Skill and reference snapshot', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'referytale-workspace-test-'));
+  const task = {
+    condition: 'skill',
+    evaluationCase: {},
+  };
+  const instructionSnapshot = {
+    skillContent: 'snapshot skill',
+    referenceFiles: [{
+      relativePath: 'references/policy.md',
+      content: Buffer.from('snapshot reference'),
+    }],
+  };
+
+  try {
+    await prepareWorkspace(directory, task, instructionSnapshot);
+
+    assert.match(await readFile(path.join(directory, 'AGENTS.md'), 'utf8'), /snapshot skill/);
+    assert.equal(
+      await readFile(path.join(directory, 'references', 'policy.md'), 'utf8'),
+      'snapshot reference',
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -448,6 +507,11 @@ test('summarizeResults does not compare when a generated output is ungraded', ()
 
   assert.equal(summary.condition_summary.skill.ungraded, 1);
   assert.equal(summary.cases[0].comparison, 'not-comparable');
+
+  const report = buildMarkdownReport(evaluation, manifest, summary, grades);
+  assert.match(report, /実行状態: 未完了（未採点1件）/);
+  assert.match(report, /不合格の有無は未確定/);
+  assert.doesNotMatch(report, /不合格はなかった/);
 });
 
 test('summarizeResults marks absent generation records as missing and non-comparable', () => {
@@ -630,4 +694,19 @@ test('buildMarkdownReport describes a single skill condition without claiming a 
   assert.match(report, /\| ケース \| 種別 \| rubric \| Skillあり \|/);
   assert.doesNotMatch(report, /両条件へ同じ/);
   assert.doesNotMatch(report, /合格率差:/);
+});
+
+test('runReportStage refuses to overwrite a report with review corrections', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'referytale-report-test-'));
+
+  try {
+    await writeFile(path.join(directory, 'review-correction.json'), '{}\n', 'utf8');
+
+    await assert.rejects(
+      () => runReportStage(evaluation, directory, {}),
+      /Refusing to regenerate a corrected report/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
