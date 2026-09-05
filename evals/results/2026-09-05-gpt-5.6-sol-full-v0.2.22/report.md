@@ -1,5 +1,7 @@
 # ReferyTale 全件比較評価 — gpt-5.6-sol
 
+> **公開後訂正:** 内容の再確認により、Skillありのp18をP1不合格へ訂正した。訂正後はSkillなし16/38、Skillあり37/38である。元の自動採点データは監査用に保持し、訂正内容は[`review-correction.json`](./review-correction.json)を正本とする。
+
 - 実施日時: 2026-09-05T08:14:14.459Z
 - 生成モデル: `gpt-5.6-sol`
 - 採点モデル: `gpt-5.6-sol`（条件名を伏せた別セッション）
@@ -14,9 +16,9 @@
 ## 結果
 
 - Skillなし: 16/38 (42.11%)、生成エラー0件、未生成0件、未採点0件
-- Skillあり: 38/38 (100.00%)、生成エラー0件、未生成0件、未採点0件
-- 合格率差: +57.89ポイント
-- ケース比較: 改善22、同等16、悪化0、比較不能0
+- Skillあり: 37/38 (97.37%)、生成エラー0件、未生成0件、未採点0件
+- 合格率差: +55.26ポイント
+- ケース比較: 改善22、同等15、悪化1、比較不能0
 
 | ケース | 種別 | rubric | Skillなし | Skillあり | 比較 |
 |---|---|---|---:|---:|---|
@@ -40,7 +42,7 @@
 | p15-preserve-claim-strength | rewrite | M1 | 1/1 | 1/1 | same |
 | p16-no-invented-emotion | write | F1 | 0/1 | 1/1 | improved |
 | p17-creative-task-can-invent | write | V1 | 1/1 | 1/1 | same |
-| p18-provenance-table-mode | strict-write | F1, V1, P1 | 1/1 | 1/1 | same |
+| p18-provenance-table-mode | strict-write | F1, V1, P1 | 1/1 | 0/1 | regressed |
 | p19-verified-secondary-source-is-allowed | write | F1, M1 | 0/1 | 1/1 | improved |
 | p20-do-not-strengthen-mild-opinion | rewrite | M1 | 1/1 | 1/1 | same |
 | p21-provenance-table-does-not-create-untracked-file | strict-write | F1, P1, A1 | 0/1 | 1/1 | improved |
@@ -67,7 +69,7 @@
 | F2 — Uncertainty | 3/4 (75.00%) | 4/4 (100.00%) |
 | V1 — Vocabulary provenance | 11/11 (100.00%) | 11/11 (100.00%) |
 | V2 — User term retention | 2/2 (100.00%) | 2/2 (100.00%) |
-| P1 — Skill composition | 5/8 (62.50%) | 8/8 (100.00%) |
+| P1 — Skill composition | 5/8 (62.50%) | 7/8 (87.50%) |
 | Q1 — Naturalness | 3/3 (100.00%) | 3/3 (100.00%) |
 | Q2 — No over-structuring | 5/12 (41.67%) | 12/12 (100.00%) |
 | M1 — Meaning preservation | 10/28 (35.71%) | 28/28 (100.00%) |
@@ -77,6 +79,7 @@
 
 ## 不合格の内訳
 
+- p18-provenance-table-mode — Skillあり run 1（公開後訂正）: 人物Skillは本人の実感から書き始めるよう求めているが、出力は出社頻度から始まり、疲労の実感を後置しているためP1不合格へ訂正した。詳細は[`review-correction.json`](./review-correction.json)を参照する。
 - p02-no-unsolicited-coinage — Skillなし run 1: 素材外の事実・期待・後続行動・助言が多数追加されているため。（F1: 「仕事が楽になるはず」という事前の期待、メール返信・資料修正・次の指示、回答後の確認と修正、効率向上、休むことへの助言を素材外から追加している。 / M1: 元の因果関係を含む一方、素材にない期待、具体的行動、後続結果、助言まで加えて意味の範囲を変えている。）
 - p03-no-invented-scene — Skillなし run 1: 素材外の経験や助言を多数追加し、個人の不確実なメモを一般命題へ変えている。（F1: 材料にない「注意された」「信用されない」「落ち込んだ」「反省した」「仕事を覚えた」などの経験・感情・経過に加え、確認、メモ、見直しといった助言を追加している。 / M1: 「終わったと思うかもしれない」という個人の不確実な内容を、「社会人人生は終わらない」「大丈夫」などの一般的・断定的な主張へ広げている。依頼されていないタイトルも追加している。）
 - p04-keep-uncertainty — Skillなし run 1: 原因の不確実性は保っているが、切り替えの対象を素材外の内容で具体化している。（M1: 原文の曖昧な「切り替え」を「作業の切り替え」と具体化し、素材にない限定を加えている。）

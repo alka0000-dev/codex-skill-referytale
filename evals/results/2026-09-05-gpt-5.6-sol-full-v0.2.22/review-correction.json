@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "correction_type": "post-publication-content-review",
+  "original_automated_score": {
+    "control": "16/38",
+    "skill": "38/38"
+  },
+  "corrected_score": {
+    "control": "16/38",
+    "skill": "37/38"
+  },
+  "corrected_comparison": {
+    "improved": 22,
+    "same": 15,
+    "regressed": 1,
+    "not_comparable": 0
+  },
+  "corrections": [
+    {
+      "key": "p18-provenance-table-mode|skill|1",
+      "original_overall": "pass",
+      "corrected_overall": "fail",
+      "failed_rubrics": [
+        "P1"
+      ],
+      "reason": "人物Skillは本人の実感から書き始めるよう求めているが、出力は出社頻度から始まり、疲労の実感を後置している。"
+    }
+  ],
+  "raw_data_policy": "grading.jsonlとsummary.jsonは元の自動採点記録として変更せず保持する。このファイルを公開後訂正の正本とする。"
+}
