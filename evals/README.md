@@ -56,10 +56,11 @@ node evals/run-evals.mjs \
 
 - [2026-09-05 — GPT-5.6-sol 全33ケース](./results/2026-09-05-gpt-5.6-sol-full-v0.2.3/report.md) — Skillなし16/33、Skillあり33/33、改善17・同等16・悪化0
 - [2026-09-05 — 片側の材料を保つ安定性評価](./results/2026-09-05-gpt-5.6-sol-one-sided-retest/report.md) — 既存・未見2ケースを各5回実行し、Skillなし0/10、Skillあり10/10
+- [2026-09-05 — 開発途中の評価履歴8件](./results/history/README.md) — Skill側の不合格と修正後の再評価を実行順に公開
 - [2026-09-05 — GPT-5.3-Codex-Spark](./results/2026-09-05-gpt-5.3-codex-spark.md) — Skillなし／ありの8ケース、合計32出力の比較
 - [2026-09-05 — GPT-5.6-sol](./results/2026-09-05-gpt-5.6-sol.md) — 過去の失敗と今回の修正に関係する10ケース、12出力の結果と実出力
 
-最新結果の一覧は[`results/README.md`](./results/README.md)に置く。結果の点数は、実行したケースの範囲だけを表す。モデル、reasoning effort、対象コミット、実行回数、Skillなし対照群の有無を結果ファイルへ記録する。自動採点だけでSkillの普遍的な性能や、人手評価と同等の品質を主張しない。
+現行結果と履歴の一覧は[`results/README.md`](./results/README.md)に置く。結果の点数は、実行したケースの範囲だけを表す。モデル、reasoning effort、対象コミット、実行回数、Skillなし対照群の有無を結果ファイルへ記録する。自動採点だけでSkillの普遍的な性能や、人手評価と同等の品質を主張しない。
 
 | ID | 評価項目 | 合格条件 |
 |---|---|---|
