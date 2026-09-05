@@ -211,9 +211,9 @@ evalでは、次の失敗を個別に確認します。
 - 元の主張の強さや不確実性を変えた
 - 診断材料がない軸を問題なしと判定した
 
-`evals/evals.json` に36ケースを収録しています。GPT-5.6-sol・lowによる最新の全件比較では、Skillなし15/36に対してSkillあり36/36でした。改善21件、同等15件、悪化0件で、生成エラーと作業領域への副作用も0件です。
+`evals/evals.json` に38ケースを収録しています。GPT-5.6-sol・lowによる最新の全件比較では、Skillなし16/38に対してSkillあり38/38でした。改善22件、同等16件、悪化0件で、生成エラーと作業領域への副作用も0件です。
 
-実行条件、評価定義、採点、実出力、内容ハッシュを含む公開レポートは、[`evals/results/2026-09-05-gpt-5.6-sol-full-v0.2.9/report.md`](./evals/results/2026-09-05-gpt-5.6-sol-full-v0.2.9/report.md)に置いています。現行版へ至るまでに不合格が残った出力も、[`evals/results/history/README.md`](./evals/results/history/README.md)から追えるようにしています。これは同一モデルによる自動採点であり、人手評価や他モデルを含む一般性能を示すものではありません。再実行方法と全成果物は[`evals/README.md`](./evals/README.md)を参照してください。
+実行条件、評価定義、採点、実出力、内容ハッシュを含む公開レポートは、[`evals/results/2026-09-05-gpt-5.6-sol-full-v0.2.22/report.md`](./evals/results/2026-09-05-gpt-5.6-sol-full-v0.2.22/report.md)に置いています。Skillあり38出力は自動採点とは別に原素材と照合し、追加の違反がないことも確認しました。現行版へ至るまでに不合格が残った出力も、[`evals/results/history/README.md`](./evals/results/history/README.md)から追えるようにしています。これは同一モデルによる自動採点と同じタスク内の内容監査であり、独立した人手評価や他モデルを含む一般性能を示すものではありません。再実行方法と全成果物は[`evals/README.md`](./evals/README.md)を参照してください。
 
 ## natural-japaneseとの関係
 
