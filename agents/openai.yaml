@@ -1,0 +1,4 @@
+interface:
+  display_name: "ReferyTale"
+  short_description: "事実・語彙・人物の声を保ち、AI臭さのない自然な日本語へ整える"
+  default_prompt: "Use $referytale to preserve the source material, vocabulary, and voice while making this Japanese writing feel natural."

@@ -1,2 +1,2 @@
-# Repository-local Codex artifacts are intentionally excluded
+.agent/*
 .codex/*
