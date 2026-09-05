@@ -28,7 +28,7 @@ const DEFAULT_MODEL = 'gpt-5.6-sol';
 const CONDITIONS = new Set(['control', 'skill']);
 const STAGES = new Set(['generate', 'grade', 'report', 'all']);
 const REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
-const HARNESS_VERSION = '4';
+const HARNESS_VERSION = '5';
 
 const COMMON_AGENTS = `# Isolated evaluation workspace
 
@@ -72,9 +72,13 @@ Options:
 }
 
 function parsePositiveInteger(value, optionName, maximum = Number.MAX_SAFE_INTEGER) {
-  const parsed = Number.parseInt(value, 10);
+  if (typeof value === 'string' && !/^[1-9]\d*$/u.test(value)) {
+    throw new Error(`${optionName} must be an integer from 1 to ${maximum}.`);
+  }
 
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > maximum) {
+  const parsed = Number(value);
+
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum) {
     throw new Error(`${optionName} must be an integer from 1 to ${maximum}.`);
   }
 
@@ -425,7 +429,7 @@ async function prepareCodexEnvironment(temporaryRoot, options) {
   };
 }
 
-function runProcess(command, args, { cwd, input, timeoutMs, environment = {} } = {}) {
+export function runProcess(command, args, { cwd, input, timeoutMs, environment = {} } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
@@ -436,6 +440,7 @@ function runProcess(command, args, { cwd, input, timeoutMs, environment = {} } =
     const stdoutChunks = [];
     const stderrChunks = [];
     let timedOut = false;
+    let stdinError;
 
     const timeout = setTimeout(() => {
       timedOut = true;
@@ -444,6 +449,9 @@ function runProcess(command, args, { cwd, input, timeoutMs, environment = {} } =
 
     child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
     child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
+    child.stdin.on('error', (error) => {
+      stdinError ??= error;
+    });
     child.on('error', (error) => {
       clearTimeout(timeout);
       reject(error);
@@ -454,15 +462,21 @@ function runProcess(command, args, { cwd, input, timeoutMs, environment = {} } =
         code,
         signal,
         timedOut,
+        stdin_error: stdinError?.message,
         stdout: Buffer.concat(stdoutChunks).toString('utf8'),
         stderr: Buffer.concat(stderrChunks).toString('utf8'),
       });
     });
 
-    if (input !== undefined) {
-      child.stdin.write(input);
+    try {
+      if (input !== undefined) {
+        child.stdin.write(input);
+      }
+      child.stdin.end();
+    } catch (error) {
+      stdinError ??= error;
+      child.stdin.destroy();
     }
-    child.stdin.end();
   });
 }
 
@@ -755,7 +769,10 @@ async function executeGeneration(task, options, temporaryRoot, skillContent, cod
     ? runLocalProcess('git', ['status', '--porcelain=v1', '--untracked-files=all'], workspace)
     : undefined;
   const finishedAt = new Date();
-  const succeeded = result.code === 0 && !result.timedOut && typeof parsed.finalMessage === 'string';
+  const succeeded = result.code === 0
+    && !result.timedOut
+    && !result.stdin_error
+    && typeof parsed.finalMessage === 'string';
 
   return {
     schema_version: 1,
@@ -779,6 +796,7 @@ async function executeGeneration(task, options, temporaryRoot, skillContent, cod
           exit_code: result.code,
           signal: result.signal,
           timed_out: result.timedOut,
+          stdin_error: result.stdin_error,
           events: parsed.errors,
           stderr_tail: redactWorkspace(result.stderr, workspace),
         },
@@ -1068,13 +1086,14 @@ function validateGraderResponse(parsedResponse, samples) {
   }
 }
 
-async function executeGraderBatch(
+export async function executeGraderBatch(
   evaluation,
   samples,
   options,
   temporaryRoot,
   batchIndex,
   codexEnvironment,
+  services = {},
 ) {
   const batchDirectory = path.join(temporaryRoot, `batch-${batchIndex + 1}`);
   await mkdir(batchDirectory, { recursive: true });
@@ -1083,54 +1102,82 @@ async function executeGraderBatch(
   await writeFile(schemaPath, `${JSON.stringify(graderSchema(), null, 2)}\n`, 'utf8');
   const prompt = buildGraderPrompt(evaluation, samples);
   let lastError;
+  const executeProcess = services.runProcess ?? runProcess;
+  const onAttempt = services.onAttempt ?? (async () => {});
 
   for (let attempt = 1; attempt <= options.graderRetries + 1; attempt += 1) {
     const startedAt = new Date();
-    const invocation = codexInvocation();
-    const result = await runProcess(
-      invocation.command,
-      [...invocation.prefixArguments, ...baseCodexArguments({
-        model: options.graderModel,
-        reasoning: options.reasoning,
-        cwd: batchDirectory,
-        sandbox: 'read-only',
-        outputSchema: schemaPath,
-      })],
-      {
-        cwd: batchDirectory,
-        input: prompt,
-        timeoutMs: options.timeoutSeconds * 1000,
-        environment: codexEnvironment,
-      },
-    );
-    const parsedEvents = parseCodexEvents(result.stdout);
+    const batchId = services.allocateBatchId?.() ?? `batch-${batchIndex + 1}-attempt-${attempt}`;
+    let parsedEvents;
+    let parsedResponse;
+    let attemptRecord;
 
     try {
-      if (result.code !== 0 || result.timedOut || !parsedEvents.finalMessage) {
+      const invocation = codexInvocation();
+      const result = await executeProcess(
+        invocation.command,
+        [...invocation.prefixArguments, ...baseCodexArguments({
+          model: options.graderModel,
+          reasoning: options.reasoning,
+          cwd: batchDirectory,
+          sandbox: 'read-only',
+          outputSchema: schemaPath,
+        })],
+        {
+          cwd: batchDirectory,
+          input: prompt,
+          timeoutMs: options.timeoutSeconds * 1000,
+          environment: codexEnvironment,
+        },
+      );
+      parsedEvents = parseCodexEvents(result.stdout);
+      if (result.code !== 0 || result.timedOut || result.stdin_error || !parsedEvents.finalMessage) {
         throw new Error(
-          `Codex grading call failed with exit ${result.code}, timeout=${result.timedOut}: ${result.stderr.slice(-1000)}`,
+          `Codex grading call failed with exit ${result.code}, timeout=${result.timedOut}, stdin=${result.stdin_error ?? 'ok'}: ${result.stderr.slice(-1000)}`,
         );
       }
 
-      const parsedResponse = JSON.parse(parsedEvents.finalMessage);
+      parsedResponse = JSON.parse(parsedEvents.finalMessage);
       validateGraderResponse(parsedResponse, samples);
       const finishedAt = new Date();
-      return {
-        batch_id: `batch-${batchIndex + 1}`,
+      attemptRecord = {
+        batch_id: batchId,
         attempt,
         status: 'success',
         started_at: startedAt.toISOString(),
         finished_at: finishedAt.toISOString(),
         duration_ms: finishedAt.getTime() - startedAt.getTime(),
         usage: parsedEvents.usage,
-        response: parsedResponse,
       };
     } catch (error) {
       lastError = error;
+      const finishedAt = new Date();
+      await onAttempt({
+        batch_id: batchId,
+        attempt,
+        status: 'error',
+        started_at: startedAt.toISOString(),
+        finished_at: finishedAt.toISOString(),
+        duration_ms: finishedAt.getTime() - startedAt.getTime(),
+        usage: parsedEvents?.usage,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      continue;
     }
+
+    await onAttempt(attemptRecord);
+    return { ...attemptRecord, response: parsedResponse };
   }
 
   throw new Error(`Grader batch ${batchIndex + 1} failed: ${lastError?.message}`);
+}
+
+export function nextGradingBatchNumber(records) {
+  const maximum = records.reduce((currentMaximum, record) => {
+    const match = /^batch-(\d+)$/u.exec(record.batch_id ?? '');
+    return match ? Math.max(currentMaximum, Number(match[1])) : currentMaximum;
+  }, 0);
+  return maximum + 1;
 }
 
 function chunk(values, size) {
@@ -1141,12 +1188,13 @@ function chunk(values, size) {
   return chunks;
 }
 
-async function runGradingStage(evaluation, options, outputDirectory, manifest) {
+export async function runGradingStage(evaluation, options, outputDirectory, manifest) {
   const generationPath = path.join(outputDirectory, 'generations.jsonl');
   const gradingPath = path.join(outputDirectory, 'grading.jsonl');
   const gradingBatchPath = path.join(outputDirectory, 'grading-batches.jsonl');
   const generationByKey = latestRecordsByKey(await readJsonLines(generationPath));
   const previousGrades = latestRecordsByKey(await readJsonLines(gradingPath), 'key');
+  const previousBatchRecords = await readJsonLines(gradingBatchPath);
   const caseById = new Map(evaluation.cases.map((evaluationCase) => [evaluationCase.id, evaluationCase]));
   const samples = [...generationByKey.values()]
     .filter((generation) => generation.status === 'success' && !previousGrades.has(generation.key))
@@ -1160,6 +1208,10 @@ async function runGradingStage(evaluation, options, outputDirectory, manifest) {
 
   if (samples.length === 0) {
     console.log('Grading stage already complete.');
+    const finalGrades = latestRecordsByKey(await readJsonLines(gradingPath));
+    manifest.grading_completed_at = new Date().toISOString();
+    manifest.graded_outputs = finalGrades.size;
+    await writeFile(path.join(outputDirectory, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
     return;
   }
 
@@ -1168,6 +1220,7 @@ async function runGradingStage(evaluation, options, outputDirectory, manifest) {
   const codexRuntime = await prepareCodexEnvironment(temporaryRoot, options);
   manifest.grader_authentication_mode = codexRuntime.authMode;
   console.log(`Grading ${samples.length} outputs in ${batches.length} blind batches.`);
+  let nextBatchNumber = nextGradingBatchNumber(previousBatchRecords);
 
   try {
     for (const [batchIndex, batch] of batches.entries()) {
@@ -1178,18 +1231,15 @@ async function runGradingStage(evaluation, options, outputDirectory, manifest) {
         temporaryRoot,
         batchIndex,
         codexRuntime.environment,
+        {
+          allocateBatchId: () => `batch-${nextBatchNumber++}`,
+          onAttempt: async (attemptRecord) => appendJsonLine(gradingBatchPath, {
+            schema_version: 1,
+            ...attemptRecord,
+            sample_ids: batch.map((sample) => sample.blindId),
+          }),
+        },
       );
-      await appendJsonLine(gradingBatchPath, {
-        schema_version: 1,
-        batch_id: batchResult.batch_id,
-        attempt: batchResult.attempt,
-        status: batchResult.status,
-        sample_ids: batch.map((sample) => sample.blindId),
-        started_at: batchResult.started_at,
-        finished_at: batchResult.finished_at,
-        duration_ms: batchResult.duration_ms,
-        usage: batchResult.usage,
-      });
 
       const resultByBlindId = new Map(
         batchResult.response.results.map((result) => [result.sample_id, result]),
@@ -1243,7 +1293,10 @@ function formatRate(pass, total) {
 }
 
 function statusFor(generation, grade) {
-  if (!generation || generation.status !== 'success') {
+  if (!generation) {
+    return 'missing';
+  }
+  if (generation.status !== 'success') {
     return 'error';
   }
   return grade?.overall ?? 'ungraded';
@@ -1259,13 +1312,17 @@ export function summarizeResults(evaluation, manifest, generationRecords, gradeR
     const generations = [...generationByKey.values()].filter((record) => record.condition === condition);
     const grades = [...gradeByKey.values()].filter((record) => record.condition === condition);
     const planned = manifest.case_ids.length * manifest.repetitions;
+    const attempted = generations.length;
     const generated = generations.filter((record) => record.status === 'success').length;
+    const generationErrors = generations.filter((record) => record.status !== 'success').length;
     const pass = grades.filter((record) => record.overall === 'pass').length;
     const fail = grades.filter((record) => record.overall === 'fail').length;
     conditionSummary[condition] = {
       planned,
+      attempted,
       generated,
-      generation_errors: planned - generated,
+      generation_errors: generationErrors,
+      missing_generations: Math.max(0, planned - attempted),
       graded: pass + fail,
       ungraded: Math.max(0, generated - pass - fail),
       pass,
@@ -1293,6 +1350,7 @@ export function summarizeResults(evaluation, manifest, generationRecords, gradeR
       let pass = 0;
       let fail = 0;
       let error = 0;
+      let missing = 0;
       let ungraded = 0;
       for (let repetition = 1; repetition <= manifest.repetitions; repetition += 1) {
         const key = `${caseId}|${condition}|${repetition}`;
@@ -1300,9 +1358,10 @@ export function summarizeResults(evaluation, manifest, generationRecords, gradeR
         if (status === 'pass') pass += 1;
         else if (status === 'fail') fail += 1;
         else if (status === 'error') error += 1;
+        else if (status === 'missing') missing += 1;
         else ungraded += 1;
       }
-      conditions[condition] = { pass, fail, error, ungraded };
+      conditions[condition] = { pass, fail, error, missing, ungraded };
     }
 
     let comparison = 'not-comparable';
@@ -1312,6 +1371,8 @@ export function summarizeResults(evaluation, manifest, generationRecords, gradeR
       if (
         controlAttempts > 0
         && skillAttempts > 0
+        && conditions.control.missing === 0
+        && conditions.skill.missing === 0
         && conditions.control.ungraded === 0
         && conditions.skill.ungraded === 0
       ) {
@@ -1359,21 +1420,51 @@ function conditionLabel(condition) {
 }
 
 function formatCaseCondition(value) {
+  const error = value.error ?? 0;
+  const missing = value.missing ?? 0;
+  const ungraded = value.ungraded ?? 0;
   const suffix = [];
-  if (value.error > 0) suffix.push(`error ${value.error}`);
-  if (value.ungraded > 0) suffix.push(`ungraded ${value.ungraded}`);
-  const main = `${value.pass}/${value.pass + value.fail + value.error + value.ungraded}`;
+  if (error > 0) suffix.push(`error ${error}`);
+  if (missing > 0) suffix.push(`missing ${missing}`);
+  if (ungraded > 0) suffix.push(`ungraded ${ungraded}`);
+  const main = `${value.pass}/${value.pass + value.fail + error + missing + ungraded}`;
   return suffix.length > 0 ? `${main}; ${suffix.join(', ')}` : main;
+}
+
+function generationMethodDescription(manifest) {
+  const environment = manifest.codex_home_isolated
+    ? '各生成は別の一時作業フォルダと隔離`CODEX_HOME`で実行した。端末にインストール済みのSkill探索、Skill検索、プラグイン、ユーザー設定は無効化した。'
+    : '各生成は別の一時作業フォルダで実行したが、通常の`CODEX_HOME`を継承した。ユーザー設定やユーザー指示が結果へ影響した可能性がある。';
+  const hasControl = manifest.conditions.includes('control');
+  const hasSkill = manifest.conditions.includes('skill');
+  let conditions;
+
+  if (hasControl && hasSkill) {
+    conditions = '両条件へ同じ共通指示、モデル、reasoning effort、入力、fixtureを与え、Skillあり条件だけに現行の`SKILL.md`と`references/`を追加した。';
+  } else if (hasSkill) {
+    conditions = 'Skillあり条件だけを実行し、共通指示、モデル、reasoning effort、入力、fixtureに加えて、現行の`SKILL.md`と`references/`を配置した。';
+  } else {
+    conditions = 'Skillなし条件だけを実行し、共通指示、モデル、reasoning effort、入力、fixtureを与え、`SKILL.md`と`references/`は配置しなかった。';
+  }
+
+  return `${environment}${conditions}`;
 }
 
 export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords) {
   const control = summary.condition_summary.control;
   const skill = summary.condition_summary.skill;
-  const effect = control && skill && control.ungraded === 0 && skill.ungraded === 0
+  const isPaired = Boolean(control && skill);
+  const effect = isPaired
+    && (control.missing_generations ?? 0) === 0
+    && (skill.missing_generations ?? 0) === 0
+    && control.ungraded === 0
+    && skill.ungraded === 0
     ? percentage(skill.pass, skill.planned) - percentage(control.pass, control.planned)
     : undefined;
   const isFullEvaluation = manifest.case_ids.length === evaluation.cases.length;
-  const reportScope = isFullEvaluation ? '全件比較評価' : '比較評価';
+  const reportScope = `${isFullEvaluation ? '全件' : ''}${isPaired ? '比較評価' : '単一条件評価'}`;
+  const missingGenerationCount = Object.values(summary.condition_summary)
+    .reduce((total, condition) => total + (condition.missing_generations ?? 0), 0);
   const lines = [
     `# ReferyTale ${reportScope} — ${manifest.model}`,
     '',
@@ -1383,8 +1474,8 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
     `- reasoning effort: \`${manifest.reasoning_effort}\``,
     `- eval定義: \`evals.json\` version \`${manifest.eval_version}\``,
     `- 対象ケース: ${manifest.case_ids.length}件`,
-    `- 実行回数: 各条件・各ケース${manifest.repetitions}回、計${manifest.planned_generations}出力`,
-    `- 対象Gitコミット: \`${manifest.git_commit ?? '取得不能'}\``,
+    `- 実行回数: ${isPaired ? '各条件' : conditionLabel(manifest.conditions[0])}・各ケース${manifest.repetitions}回、計${manifest.planned_generations}出力`,
+    `- 対象Git状態: \`${manifest.git_commit ?? '取得不能'}\`（${manifest.git_dirty_at_start ? '未コミット変更あり' : 'クリーン'}）`,
     `- Skill SHA-256: \`${manifest.skill_sha256}\``,
     `- Codex CLI: \`${manifest.codex_cli_version ?? '取得不能'}\``,
     '',
@@ -1392,27 +1483,38 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
     '',
   ];
 
+  if (missingGenerationCount > 0) {
+    lines.push(`- 実行状態: 未完了（未生成${missingGenerationCount}件）`);
+  }
+
   if (control) {
-    lines.push(`- Skillなし: ${formatRate(control.pass, control.planned)}、生成エラー${control.generation_errors}件、未採点${control.ungraded}件`);
+    lines.push(`- Skillなし: ${formatRate(control.pass, control.planned)}、生成エラー${control.generation_errors}件、未生成${control.missing_generations ?? 0}件、未採点${control.ungraded}件`);
   }
   if (skill) {
-    lines.push(`- Skillあり: ${formatRate(skill.pass, skill.planned)}、生成エラー${skill.generation_errors}件、未採点${skill.ungraded}件`);
+    lines.push(`- Skillあり: ${formatRate(skill.pass, skill.planned)}、生成エラー${skill.generation_errors}件、未生成${skill.missing_generations ?? 0}件、未採点${skill.ungraded}件`);
   }
   if (effect !== undefined) {
     const sign = effect > 0 ? '+' : '';
     lines.push(`- 合格率差: ${sign}${effect.toFixed(2)}ポイント`);
   }
 
+  if (isPaired) {
+    lines.push(`- ケース比較: 改善${summary.comparison_summary.improved}、同等${summary.comparison_summary.same}、悪化${summary.comparison_summary.regressed}、比較不能${summary.comparison_summary.not_comparable}`);
+  } else {
+    lines.push('- ケース比較: 単一条件のため算出しない');
+  }
+
+  const conditionHeaders = manifest.conditions.map(conditionLabel);
   lines.push(
-    `- ケース比較: 改善${summary.comparison_summary.improved}、同等${summary.comparison_summary.same}、悪化${summary.comparison_summary.regressed}、比較不能${summary.comparison_summary.not_comparable}`,
     '',
-    '| ケース | 種別 | rubric | Skillなし | Skillあり | 比較 |',
-    '|---|---|---|---:|---:|---|',
+    `| ケース | 種別 | rubric | ${conditionHeaders.join(' | ')}${isPaired ? ' | 比較' : ''} |`,
+    `|---|---|---|${manifest.conditions.map(() => '---:|').join('')}${isPaired ? '---|' : ''}`,
   );
 
   for (const item of summary.cases) {
+    const conditionCells = manifest.conditions.map((condition) => formatCaseCondition(item.conditions[condition]));
     lines.push(
-      `| ${item.case_id} | ${item.type} | ${item.rubrics.join(', ')} | ${item.conditions.control ? formatCaseCondition(item.conditions.control) : '—'} | ${item.conditions.skill ? formatCaseCondition(item.conditions.skill) : '—'} | ${item.comparison} |`,
+      `| ${item.case_id} | ${item.type} | ${item.rubrics.join(', ')} | ${conditionCells.join(' | ')}${isPaired ? ` | ${item.comparison}` : ''} |`,
     );
   }
 
@@ -1448,9 +1550,7 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
     '',
     '## 方法',
     '',
-    manifest.codex_home_isolated
-      ? '各生成は別の一時作業フォルダと隔離`CODEX_HOME`で実行した。両条件へ同じ共通指示、モデル、reasoning effort、入力、fixtureを与え、Skillあり条件だけに現行の`SKILL.md`と`references/`を追加した。端末にインストール済みのSkill探索、Skill検索、プラグイン、ユーザー設定は無効化した。'
-      : '各生成は別の一時作業フォルダで実行したが、通常の`CODEX_HOME`を継承した。ユーザー設定やユーザー指示が結果へ影響した可能性がある。両条件へ同じ共通指示、モデル、reasoning effort、入力、fixtureを与え、Skillあり条件だけに現行の`SKILL.md`と`references/`を追加した。',
+    generationMethodDescription(manifest),
     '',
     '生成担当には`expected`、`must_not`、rubric、過去出力を渡していない。採点時は条件名を伏せ、入力、補足、期待内容、禁止事項、指定rubric、実出力、fixtureの初期・最終内容、最終ファイル差分を別セッションへ渡した。採点結果の集計とレポート生成はランナーが機械的に行った。',
     '',
@@ -1458,11 +1558,13 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
     '',
     '## 制約',
     '',
-    `- 単一の生成モデル、単一のreasoning effortで、各条件・各ケース${manifest.repetitions}回実行した評価である`,
+    `- 単一の生成モデル、単一のreasoning effortで、${isPaired ? '各条件' : '選択した条件'}・各ケース${manifest.repetitions}回実行した評価である`,
     `- 採点は\`${manifest.grader_model}\`の別セッションで行っており、独立した人手評価ではない`,
     '- 条件名は伏せているが、出力の特徴からSkill条件を推測できる可能性は残る',
     '- 内部でProvenance Tableを作ったかなど、最終出力から観察できない工程は点数へ含めていない',
-    `- 合格率差は今回の${manifest.case_ids.length}ケース内の差であり、あらゆる日本語文章タスクへ一般化できない`,
+    isPaired
+      ? `- 合格率差は今回の${manifest.case_ids.length}ケース内の差であり、あらゆる日本語文章タスクへ一般化できない`
+      : '- 単一条件だけの実行であり、Skillなし／ありの効果差は算出できない',
     '',
   );
 

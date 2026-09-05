@@ -11,8 +11,12 @@ import {
   buildEvaluationSnapshot,
   buildGenerationPlan,
   compareSnapshots,
+  executeGraderBatch,
+  nextGradingBatchNumber,
   parseArguments,
   readJsonLines,
+  runGradingStage,
+  runProcess,
   summarizeResults,
   validateEvaluation,
 } from './run-evals.mjs';
@@ -40,6 +44,16 @@ test('parseArguments builds the paired one-run default', () => {
   assert.equal(options.repetitions, 1);
   assert.equal(options.model, 'gpt-5.6-sol');
   assert.equal(options.dryRun, true);
+});
+
+test('parseArguments rejects partially parsed numeric options', () => {
+  for (const [option, value] of [
+    ['--repetitions', '10oops'],
+    ['--timeout-seconds', '60.5'],
+    ['--concurrency', '2e1'],
+  ]) {
+    assert.throws(() => parseArguments([option, value]), /must be an integer/);
+  }
 });
 
 test('validateEvaluation rejects unknown rubrics and duplicate cases', () => {
@@ -105,7 +119,7 @@ test('buildEvaluationSnapshot keeps selected cases and their rubrics', () => {
 test('assertResumeManifestMatches rejects changed experimental inputs', () => {
   const manifest = {
     schema_version: 2,
-    harness_version: '4',
+    harness_version: '5',
     eval_version: 'test',
     eval_file: 'evals/evals.json',
     case_ids: ['case-1'],
@@ -187,6 +201,124 @@ test('readJsonLines rejects a malformed completed record', async () => {
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('nextGradingBatchNumber advances past records from an earlier run', () => {
+  assert.equal(nextGradingBatchNumber([
+    { batch_id: 'batch-1' },
+    { batch_id: 'batch-3' },
+    { batch_id: 'legacy-id' },
+  ]), 4);
+});
+
+test('executeGraderBatch records failed attempts before a successful retry', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'referytale-grader-test-'));
+  const attempts = [];
+  let callCount = 0;
+  let nextBatchNumber = 7;
+  const samples = [{
+    blindId: 'sample-1',
+    evaluationCase: evaluation.cases[0],
+    generation: {
+      output: 'Done.',
+      workspace_changes: { added: [], modified: [], removed: [] },
+    },
+  }];
+  const response = {
+    results: [{
+      sample_id: 'sample-1',
+      rubric_results: [{ id: 'F1', pass: true, reason: 'No additions.' }],
+      overall: 'pass',
+      reason: 'Pass.',
+    }],
+  };
+
+  try {
+    const result = await executeGraderBatch(
+      evaluation,
+      samples,
+      {
+        graderModel: 'grader',
+        reasoning: 'low',
+        graderRetries: 1,
+        timeoutSeconds: 10,
+      },
+      directory,
+      0,
+      {},
+      {
+        allocateBatchId: () => `batch-${nextBatchNumber++}`,
+        onAttempt: async (attempt) => attempts.push(attempt),
+        runProcess: async () => {
+          callCount += 1;
+          if (callCount === 1) {
+            return {
+              code: 1,
+              signal: null,
+              timedOut: false,
+              stdout: '',
+              stderr: 'temporary failure',
+            };
+          }
+          return {
+            code: 0,
+            signal: null,
+            timedOut: false,
+            stdout: [
+              JSON.stringify({
+                type: 'item.completed',
+                item: { type: 'agent_message', text: JSON.stringify(response) },
+              }),
+              JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 1 } }),
+            ].join('\n'),
+            stderr: '',
+          };
+        },
+      },
+    );
+
+    assert.deepEqual(attempts.map((attempt) => attempt.batch_id), ['batch-7', 'batch-8']);
+    assert.deepEqual(attempts.map((attempt) => attempt.status), ['error', 'success']);
+    assert.match(attempts[0].error, /temporary failure/);
+    assert.equal(result.batch_id, 'batch-8');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('runGradingStage persists completion when there is nothing to grade', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'referytale-grading-complete-test-'));
+  const manifest = {
+    run_id: 'test-run',
+    case_ids: ['case-1'],
+    conditions: ['control'],
+    repetitions: 1,
+  };
+
+  try {
+    await writeFile(
+      path.join(directory, 'generations.jsonl'),
+      `${JSON.stringify({ key: 'case-1|control|1', condition: 'control', status: 'error' })}\n`,
+      'utf8',
+    );
+    await runGradingStage(evaluation, {}, directory, manifest);
+    const savedManifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
+
+    assert.equal(savedManifest.graded_outputs, 0);
+    assert.equal(typeof savedManifest.grading_completed_at, 'string');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('runProcess handles child stdin closure without an unhandled stream error', async () => {
+  const result = await runProcess(
+    process.execPath,
+    ['-e', 'process.stdin.destroy(); process.exit(1);'],
+    { input: 'x'.repeat(4 * 1024 * 1024), timeoutMs: 5000 },
+  );
+
+  assert.equal(result.code, 1);
 });
 
 test('summarizeResults compares paired pass rates', () => {
@@ -296,6 +428,43 @@ test('summarizeResults does not compare when a generated output is ungraded', ()
   assert.equal(summary.cases[0].comparison, 'not-comparable');
 });
 
+test('summarizeResults marks absent generation records as missing and non-comparable', () => {
+  const manifest = {
+    created_at: '2026-09-05T00:00:00.000Z',
+    eval_version: 'test',
+    model: 'model',
+    grader_model: 'grader',
+    reasoning_effort: 'low',
+    conditions: ['control', 'skill'],
+    repetitions: 1,
+    case_ids: ['case-1'],
+    planned_generations: 2,
+    codex_home_isolated: true,
+    git_dirty_at_start: false,
+    skill_sha256: 'hash',
+  };
+  const generations = [
+    { key: 'case-1|control|1', case_id: 'case-1', condition: 'control', status: 'success' },
+  ];
+  const grades = [{
+    key: 'case-1|control|1',
+    condition: 'control',
+    overall: 'pass',
+    rubric_results: [{ id: 'F1', pass: true }],
+  }];
+
+  const summary = summarizeResults(evaluation, manifest, generations, grades);
+
+  assert.equal(summary.condition_summary.skill.generation_errors, 0);
+  assert.equal(summary.condition_summary.skill.missing_generations, 1);
+  assert.equal(summary.cases[0].conditions.skill.missing, 1);
+  assert.equal(summary.cases[0].comparison, 'not-comparable');
+
+  const report = buildMarkdownReport(evaluation, manifest, summary, grades);
+  assert.match(report, /実行状態: 未完了（未生成1件）/);
+  assert.doesNotMatch(report, /合格率差:/);
+});
+
 test('buildMarkdownReport describes subset scope and actual repetitions', () => {
   const manifest = {
     created_at: '2026-09-05T00:00:00.000Z',
@@ -388,4 +557,53 @@ test('buildMarkdownReport discloses a non-isolated CODEX_HOME', () => {
 
   assert.match(report, /通常の`CODEX_HOME`を継承/);
   assert.match(report, /ユーザー設定やユーザー指示が結果へ影響した可能性/);
+});
+
+test('buildMarkdownReport describes a single skill condition without claiming a control run', () => {
+  const manifest = {
+    created_at: '2026-09-05T00:00:00.000Z',
+    eval_version: 'test',
+    model: 'model',
+    grader_model: 'grader',
+    reasoning_effort: 'low',
+    conditions: ['skill'],
+    repetitions: 1,
+    case_ids: ['case-1'],
+    planned_generations: 1,
+    codex_home_isolated: true,
+    git_dirty_at_start: false,
+    skill_sha256: 'hash',
+  };
+  const summary = {
+    condition_summary: {
+      skill: {
+        planned: 1,
+        generated: 1,
+        generation_errors: 0,
+        missing_generations: 0,
+        graded: 1,
+        ungraded: 0,
+        pass: 1,
+        fail: 0,
+      },
+    },
+    comparison_summary: { improved: 0, same: 0, regressed: 0, not_comparable: 1 },
+    rubric_summary: { skill: { F1: { pass: 1, total: 1 } } },
+    cases: [{
+      case_id: 'case-1',
+      type: 'write',
+      rubrics: ['F1'],
+      conditions: { skill: { pass: 1, fail: 0, error: 0, missing: 0, ungraded: 0 } },
+      comparison: 'not-comparable',
+    }],
+  };
+
+  const report = buildMarkdownReport(evaluation, manifest, summary, []);
+
+  assert.match(report, /^# ReferyTale 全件単一条件評価 — model/m);
+  assert.match(report, /Skillあり条件だけを実行/);
+  assert.match(report, /ケース比較: 単一条件のため算出しない/);
+  assert.match(report, /\| ケース \| 種別 \| rubric \| Skillあり \|/);
+  assert.doesNotMatch(report, /両条件へ同じ/);
+  assert.doesNotMatch(report, /合格率差:/);
 });
