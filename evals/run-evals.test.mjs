@@ -12,6 +12,7 @@ import {
   buildGenerationPlan,
   compareSnapshots,
   executeGraderBatch,
+  loadOrCreateManifest,
   nextGradingBatchNumber,
   parseArguments,
   prepareWorkspace,
@@ -181,7 +182,14 @@ test('assertResumeManifestMatches rejects changed experimental inputs', () => {
 });
 
 test('buildGraderPrompt includes fixture contents before and after generation', () => {
-  const prompt = buildGraderPrompt(evaluation, [{
+  const expandedEvaluation = {
+    ...evaluation,
+    rubrics: {
+      ...evaluation.rubrics,
+      M1: { name: 'Meaning', pass_condition: 'Preserve meaning' },
+    },
+  };
+  const prompt = buildGraderPrompt(expandedEvaluation, [{
     blindId: 'sample-1',
     evaluationCase: evaluation.cases[0],
     generation: {
@@ -198,6 +206,35 @@ test('buildGraderPrompt includes fixture contents before and after generation', 
 
   assert.match(prompt, /before fixture text/);
   assert.match(prompt, /after fixture text/);
+  assert.match(prompt, /"F1"/);
+  assert.doesNotMatch(prompt, /"M1"/);
+});
+
+test('loadOrCreateManifest rejects a nonempty output without manifest.json', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'referytale-manifest-test-'));
+  const currentManifest = { run_id: 'new-run' };
+
+  try {
+    assert.equal(
+      await loadOrCreateManifest(
+        { output: directory, stage: 'generate', resume: false },
+        currentManifest,
+      ),
+      currentManifest,
+    );
+
+    await writeFile(path.join(directory, 'generations.jsonl'), '{"status":"success"}\n', 'utf8');
+
+    await assert.rejects(
+      () => loadOrCreateManifest(
+        { output: directory, stage: 'generate', resume: false },
+        currentManifest,
+      ),
+      /Output directory is not empty and has no manifest\.json/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('readJsonLines repairs an unterminated trailing record', async () => {

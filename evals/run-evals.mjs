@@ -27,7 +27,7 @@ const DEFAULT_MODEL = 'gpt-5.6-sol';
 const CONDITIONS = new Set(['control', 'skill']);
 const STAGES = new Set(['generate', 'grade', 'report', 'all']);
 const REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
-const HARNESS_VERSION = '7';
+const HARNESS_VERSION = '8';
 const FORCE_KILL_GRACE_MS = 1000;
 
 const COMMON_AGENTS = `# Isolated evaluation workspace
@@ -737,17 +737,20 @@ export function compareSnapshots(before, after) {
   return { added, modified, removed };
 }
 
+function selectRubrics(evaluation, cases) {
+  const rubricIds = new Set(cases.flatMap((evaluationCase) => evaluationCase.rubric));
+  return Object.fromEntries(
+    Object.entries(evaluation.rubrics).filter(([rubricId]) => rubricIds.has(rubricId)),
+  );
+}
+
 export function buildEvaluationSnapshot(evaluation, caseIds) {
   const selectedIds = new Set(caseIds);
   const cases = evaluation.cases.filter((evaluationCase) => selectedIds.has(evaluationCase.id));
-  const rubricIds = new Set(cases.flatMap((evaluationCase) => evaluationCase.rubric));
-  const rubrics = Object.fromEntries(
-    Object.entries(evaluation.rubrics).filter(([rubricId]) => rubricIds.has(rubricId)),
-  );
 
   return {
     version: evaluation.version,
-    rubrics,
+    rubrics: selectRubrics(evaluation, cases),
     cases,
   };
 }
@@ -1105,8 +1108,9 @@ function blindId(runId, key) {
 }
 
 export function buildGraderPrompt(evaluation, samples) {
+  const sampleCases = samples.map((sample) => sample.evaluationCase);
   const payload = {
-    rubrics: evaluation.rubrics,
+    rubrics: selectRubrics(evaluation, sampleCases),
     samples: samples.map((sample) => ({
       sample_id: sample.blindId,
       type: sample.evaluationCase.type,
@@ -1733,7 +1737,7 @@ export function assertResumeManifestMatches(existingManifest, currentManifest) {
   }
 }
 
-async function loadOrCreateManifest(options, currentManifest) {
+export async function loadOrCreateManifest(options, currentManifest) {
   const manifestPath = path.join(options.output, 'manifest.json');
   if (await fileExists(manifestPath)) {
     const manifest = await readJson(manifestPath);
@@ -1746,6 +1750,10 @@ async function loadOrCreateManifest(options, currentManifest) {
 
   if (options.stage === 'grade' || options.stage === 'report') {
     throw new Error(`manifest.json does not exist in ${options.output}`);
+  }
+
+  if ((await readdir(options.output)).length > 0) {
+    throw new Error(`Output directory is not empty and has no manifest.json: ${options.output}`);
   }
 
   return currentManifest;
