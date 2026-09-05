@@ -55,7 +55,7 @@ node evals/run-evals.mjs \
 ## 公開している実行結果
 
 - [2026-09-05 — GPT-5.6-sol 全36ケース](./results/2026-09-05-gpt-5.6-sol-full-v0.2.9/report.md) — Skillなし15/36、Skillあり36/36、改善21・同等15・悪化0
-- [2026-09-05 — 開発・追試の評価履歴19件](./results/history/README.md) — Skill側の不合格と修正後の再評価を実行順に公開
+- [2026-09-05 — 開発・追試の評価履歴20件](./results/history/README.md) — Skill側の不合格と修正後の再評価を実行順に公開
 - [2026-09-05 — 訂正済みの旧全33ケース評価](./results/2026-09-05-gpt-5.6-sol-full-v0.2.3/report.md) — 公開後訂正値はSkillなし16/33、Skillあり31/33
 - [2026-09-05 — 訂正済みの旧片側材料評価](./results/2026-09-05-gpt-5.6-sol-one-sided-retest/report.md) — 公開後訂正値はSkillなし0/10、Skillあり9/10
 - [2026-09-05 — GPT-5.3-Codex-Spark](./results/2026-09-05-gpt-5.3-codex-spark.md) — Skillなし／ありの8ケース、合計32出力の比較
