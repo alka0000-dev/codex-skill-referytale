@@ -1,5 +1,7 @@
 # ReferyTale 全件比較評価 — gpt-5.6-sol
 
+> **公開後訂正:** 内容の再確認により、Skillなしのp26を不合格へ訂正した。訂正後はSkillなし14/36、Skillあり36/36である。元の自動採点データは監査用に保持し、訂正内容は[`review-correction.json`](./review-correction.json)を正本とする。
+
 - 実施日時: 2026-09-05T05:19:42.813Z
 - 生成モデル: `gpt-5.6-sol`
 - 採点モデル: `gpt-5.6-sol`（条件名を伏せた別セッション）
@@ -13,10 +15,10 @@
 
 ## 結果
 
-- Skillなし: 15/36 (41.67%)、生成エラー0件、未採点0件
+- Skillなし: 14/36 (38.89%)、生成エラー0件、未採点0件
 - Skillあり: 36/36 (100.00%)、生成エラー0件、未採点0件
-- 合格率差: +58.33ポイント
-- ケース比較: 改善21、同等15、悪化0、比較不能0
+- 合格率差: +61.11ポイント
+- ケース比較: 改善22、同等14、悪化0、比較不能0
 
 | ケース | 種別 | rubric | Skillなし | Skillあり | 比較 |
 |---|---|---|---:|---:|---|
@@ -48,7 +50,7 @@
 | p23-draft-is-not-a-source | rewrite | F1, P1, Q2, M1, V1 | 0/1 | 1/1 | improved |
 | p24-naming-preserves-sequence | naming | V1, M1 | 0/1 | 1/1 | improved |
 | p25-sparse-material-does-not-create-backstory | write | F1, M1, Q2 | 0/1 | 1/1 | improved |
-| p26-negated-expectation-needs-source | write | F1, M1, Q2 | 1/1 | 1/1 | same |
+| p26-negated-expectation-needs-source | write | F1, M1, Q2 | 0/1 | 1/1 | improved |
 | p27-negated-trait-needs-source | write | F1, M1, Q2 | 0/1 | 1/1 | improved |
 | p28-reader-scope-needs-source | write | F1, M1, Q2 | 0/1 | 1/1 | improved |
 | p29-unspecified-plan-stays-unspecified | write | F1, M1 | 1/1 | 1/1 | same |
@@ -61,20 +63,21 @@
 
 | rubric | Skillなし | Skillあり |
 |---|---:|---:|
-| F1 — Source fidelity | 4/18 (22.22%) | 18/18 (100.00%) |
+| F1 — Source fidelity | 3/18 (16.67%) | 18/18 (100.00%) |
 | F2 — Uncertainty | 2/4 (50.00%) | 4/4 (100.00%) |
 | V1 — Vocabulary provenance | 9/11 (81.82%) | 11/11 (100.00%) |
 | V2 — User term retention | 2/2 (100.00%) | 2/2 (100.00%) |
 | P1 — Skill composition | 6/6 (100.00%) | 6/6 (100.00%) |
 | Q1 — Naturalness | 3/3 (100.00%) | 3/3 (100.00%) |
 | Q2 — No over-structuring | 6/10 (60.00%) | 10/10 (100.00%) |
-| M1 — Meaning preservation | 10/26 (38.46%) | 26/26 (100.00%) |
+| M1 — Meaning preservation | 9/26 (34.62%) | 26/26 (100.00%) |
 | A1 — Temporary artifact handling | 1/1 (100.00%) | 1/1 (100.00%) |
 | N1 — Out-of-scope non-interference | 3/3 (100.00%) | 3/3 (100.00%) |
 | D1 — Diagnostic evidence | 0/2 (0.00%) | 2/2 (100.00%) |
 
 ## 不合格の内訳
 
+- p26-negated-expectation-needs-source — Skillなし run 1（公開後訂正）: 電子書籍の読書について、素材にない「ふと」という自発性と「ページをめくる手」という具体的な動作を追加しているため、F1とM1を不合格へ訂正した。詳細は[`review-correction.json`](./review-correction.json)を参照する。
 - p02-no-unsolicited-coinage — Skillなし run 1: 中心の因果関係は残っているものの、素材にない期待・行動・一般化・助言と新しい概念名が追加されている。（F1: 「仕事が楽になると思っていた」という事前の期待、メール返信や資料を開く行動、かつての待ち時間の過ごし方、待ち時間には何もしないという助言を素材外から追加している。 / V1: 記事名として求められていない「待ち時間の罠」という新しい概念的な呼称を導入している。 / M1: 元の因果関係は含むが、素材にない過去との対比、事前の期待、具体的行動、助言を加え、原素材の意味範囲を広げている。）
 - p03-no-invented-scene — Skillなし run 1: 依頼されていないタイトルを加え、個人のメモを一般論や助言へ大幅に拡張している。（F1: 社会人に向いていないという感情、落ち込みや自信喪失、助言、価値と失敗の区別など、メモにない事実・感情・一般論・助言を多数追加している。 / M1: 「終わったと思うかもしれない」という限定的な内容を、タイトルや本文で「社会人人生は終わらない」などの一般命題へ広げ、原素材の範囲と強度を変えている。）
 - p06-established-term-is-allowed — Skillなし run 1: 指定された確立語「認知負荷」を導入するというexpectedを満たしていない。（V1: 独自の造語は導入していないが、expectedで指定された一般的な確立語「認知負荷」を用いず、「ワーキングメモリ（作業記憶）の負荷」に置き換えている。）

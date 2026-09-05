@@ -12,7 +12,7 @@
 
 ## 以前の自動評価（公開後訂正あり）
 
-- [eval 0.2.9 全36ケース](./2026-09-05-gpt-5.6-sol-full-v0.2.9/report.md) — Skillなし15/36、Skillあり36/36
+- [eval 0.2.9 全36ケース](./2026-09-05-gpt-5.6-sol-full-v0.2.9/report.md) — 公開後訂正値はSkillなし14/36、Skillあり36/36
 - [eval 0.2.3 全33ケース](./2026-09-05-gpt-5.6-sol-full-v0.2.3/report.md) — 公開後訂正値はSkillなし16/33、Skillあり31/33
 - [eval 0.2.3 片側材料安定性評価](./2026-09-05-gpt-5.6-sol-one-sided-retest/report.md) — 公開後訂正値はSkillなし0/10、Skillあり9/10
 

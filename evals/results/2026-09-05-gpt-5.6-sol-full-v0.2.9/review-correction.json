@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "correction_type": "post-publication-content-review",
+  "original_automated_score": {
+    "control": "15/36",
+    "skill": "36/36"
+  },
+  "corrected_score": {
+    "control": "14/36",
+    "skill": "36/36"
+  },
+  "corrected_comparison": {
+    "improved": 22,
+    "same": 14,
+    "regressed": 0,
+    "not_comparable": 0
+  },
+  "corrections": [
+    {
+      "key": "p26-negated-expectation-needs-source|control|1",
+      "original_overall": "pass",
+      "corrected_overall": "fail",
+      "failed_rubrics": [
+        "F1",
+        "M1"
+      ],
+      "reason": "電子書籍の読書について、素材にない『ふと』という自発性と『ページをめくる手』という具体的な動作を追加した。"
+    }
+  ],
+  "raw_data_policy": "grading.jsonlとsummary.jsonは元の自動採点記録として変更せず保持する。このファイルを公開後訂正の正本とする。"
+}
