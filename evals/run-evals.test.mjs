@@ -56,6 +56,16 @@ test('parseArguments rejects partially parsed numeric options', () => {
   }
 });
 
+test('parseArguments allows zero grader retries', () => {
+  const options = parseArguments(['--grader-retries', '0']);
+
+  assert.equal(options.graderRetries, 0);
+  assert.throws(
+    () => parseArguments(['--grader-retries', '-1']),
+    /must be an integer from 0 to 5/,
+  );
+});
+
 test('validateEvaluation rejects unknown rubrics and duplicate cases', () => {
   const invalid = structuredClone(evaluation);
   invalid.cases.push({ ...invalid.cases[0], rubric: ['missing'] });
@@ -321,6 +331,18 @@ test('runProcess handles child stdin closure without an unhandled stream error',
   assert.equal(result.code, 1);
 });
 
+test('runProcess force-terminates a process after timeout', async () => {
+  const startedAt = Date.now();
+  const result = await runProcess(
+    process.execPath,
+    ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000);"],
+    { timeoutMs: 100 },
+  );
+
+  assert.equal(result.timedOut, true);
+  assert.ok(Date.now() - startedAt < 4000);
+});
+
 test('summarizeResults compares paired pass rates', () => {
   const manifest = {
     eval_version: 'test',
@@ -512,6 +534,8 @@ test('buildMarkdownReport describes subset scope and actual repetitions', () => 
   assert.match(report, /今回の1ケース内の差/);
   assert.match(report, /隔離`CODEX_HOME`/);
   assert.match(report, /採点は`actual-grader`の別セッション/);
+  assert.match(report, /対象Git状態: `取得不能`（状態不明）/);
+  assert.doesNotMatch(report, /取得不能.*クリーン/);
   assert.doesNotMatch(report, /28ケース/);
   assert.match(report, /一般化できない\n$/);
   assert.doesNotMatch(report, /\n\n$/);

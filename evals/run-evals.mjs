@@ -28,7 +28,8 @@ const DEFAULT_MODEL = 'gpt-5.6-sol';
 const CONDITIONS = new Set(['control', 'skill']);
 const STAGES = new Set(['generate', 'grade', 'report', 'all']);
 const REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
-const HARNESS_VERSION = '5';
+const HARNESS_VERSION = '6';
+const FORCE_KILL_GRACE_MS = 1000;
 
 const COMMON_AGENTS = `# Isolated evaluation workspace
 
@@ -80,6 +81,20 @@ function parsePositiveInteger(value, optionName, maximum = Number.MAX_SAFE_INTEG
 
   if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum) {
     throw new Error(`${optionName} must be an integer from 1 to ${maximum}.`);
+  }
+
+  return parsed;
+}
+
+function parseNonNegativeInteger(value, optionName, maximum = Number.MAX_SAFE_INTEGER) {
+  if (typeof value === 'string' && !/^(?:0|[1-9]\d*)$/u.test(value)) {
+    throw new Error(`${optionName} must be an integer from 0 to ${maximum}.`);
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isSafeInteger(parsed) || parsed < 0 || parsed > maximum) {
+    throw new Error(`${optionName} must be an integer from 0 to ${maximum}.`);
   }
 
   return parsed;
@@ -185,7 +200,7 @@ export function parseArguments(argv) {
   options.repetitions = parsePositiveInteger(options.repetitions, '--repetitions', 20);
   options.concurrency = parsePositiveInteger(options.concurrency, '--concurrency', 8);
   options.graderBatchSize = parsePositiveInteger(options.graderBatchSize, '--grader-batch-size', 20);
-  options.graderRetries = parsePositiveInteger(options.graderRetries, '--grader-retries', 5);
+  options.graderRetries = parseNonNegativeInteger(options.graderRetries, '--grader-retries', 5);
   options.timeoutSeconds = parsePositiveInteger(options.timeoutSeconds, '--timeout-seconds', 3600);
   options.cases = options.cases
     ? [...new Set(options.cases.split(',').map((value) => value.trim()).filter(Boolean))]
@@ -429,11 +444,34 @@ async function prepareCodexEnvironment(temporaryRoot, options) {
   };
 }
 
+function terminateProcessTree(child, force) {
+  if (!child.pid) {
+    return;
+  }
+
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+      stdio: 'ignore',
+      timeout: 5000,
+      windowsHide: true,
+    });
+    child.kill('SIGKILL');
+    return;
+  }
+
+  try {
+    process.kill(-child.pid, force ? 'SIGKILL' : 'SIGTERM');
+  } catch {
+    child.kill(force ? 'SIGKILL' : 'SIGTERM');
+  }
+}
+
 export function runProcess(command, args, { cwd, input, timeoutMs, environment = {} } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
       env: { ...process.env, NO_COLOR: '1', ...environment },
+      detached: process.platform !== 'win32',
       shell: false,
       windowsHide: true,
     });
@@ -441,10 +479,20 @@ export function runProcess(command, args, { cwd, input, timeoutMs, environment =
     const stderrChunks = [];
     let timedOut = false;
     let stdinError;
+    let forceKillTimeout;
 
     const timeout = setTimeout(() => {
       timedOut = true;
-      child.kill();
+      if (process.platform === 'win32') {
+        terminateProcessTree(child, true);
+        return;
+      }
+
+      terminateProcessTree(child, false);
+      forceKillTimeout = setTimeout(
+        () => terminateProcessTree(child, true),
+        FORCE_KILL_GRACE_MS,
+      );
     }, timeoutMs);
 
     child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
@@ -454,10 +502,12 @@ export function runProcess(command, args, { cwd, input, timeoutMs, environment =
     });
     child.on('error', (error) => {
       clearTimeout(timeout);
+      clearTimeout(forceKillTimeout);
       reject(error);
     });
     child.on('close', (code, signal) => {
       clearTimeout(timeout);
+      clearTimeout(forceKillTimeout);
       resolve({
         code,
         signal,
@@ -1465,6 +1515,10 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
   const reportScope = `${isFullEvaluation ? '全件' : ''}${isPaired ? '比較評価' : '単一条件評価'}`;
   const missingGenerationCount = Object.values(summary.condition_summary)
     .reduce((total, condition) => total + (condition.missing_generations ?? 0), 0);
+  const gitState = manifest.git_commit === undefined
+    || typeof manifest.git_dirty_at_start !== 'boolean'
+    ? '`取得不能`（状態不明）'
+    : `\`${manifest.git_commit}\`（${manifest.git_dirty_at_start ? '未コミット変更あり' : 'クリーン'}）`;
   const lines = [
     `# ReferyTale ${reportScope} — ${manifest.model}`,
     '',
@@ -1475,7 +1529,7 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
     `- eval定義: \`evals.json\` version \`${manifest.eval_version}\``,
     `- 対象ケース: ${manifest.case_ids.length}件`,
     `- 実行回数: ${isPaired ? '各条件' : conditionLabel(manifest.conditions[0])}・各ケース${manifest.repetitions}回、計${manifest.planned_generations}出力`,
-    `- 対象Git状態: \`${manifest.git_commit ?? '取得不能'}\`（${manifest.git_dirty_at_start ? '未コミット変更あり' : 'クリーン'}）`,
+    `- 対象Git状態: ${gitState}`,
     `- Skill SHA-256: \`${manifest.skill_sha256}\``,
     `- Codex CLI: \`${manifest.codex_cli_version ?? '取得不能'}\``,
     '',
