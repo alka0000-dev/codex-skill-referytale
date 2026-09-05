@@ -1,0 +1,40 @@
+{
+  "version": "0.2.23",
+  "rubrics": {
+    "F1": {
+      "name": "Source fidelity",
+      "pass_condition": "材料として指定された入力・資料・固有Skillにない事実、経験、発言、感情、原因、助言を追加しない"
+    },
+    "V1": {
+      "name": "Vocabulary provenance",
+      "pass_condition": "AI独自の造語・概念名を無断導入しない"
+    },
+    "P1": {
+      "name": "Skill composition",
+      "pass_condition": "固有Skillの具体ルールを汎用文体より優先する"
+    }
+  },
+  "cases": [
+    {
+      "id": "p18-provenance-table-mode",
+      "type": "strict-write",
+      "context": "資料A: 週2回出社している。出社日は帰宅後に疲れを感じる。\n資料B: 在宅勤務の日は通勤しない。\n人物Skill: 『一人称は「わたし」。結論を急がず、本人の実感から書き始める。』",
+      "input": "資料A、資料B、人物Skillを使って短い記事本文を書いて。根拠を追えるように厳密に扱い、最終回答には本文だけを返して。",
+      "expected": [
+        "資料Aと資料Bの内容を取り違えずに使う",
+        "一人称に『わたし』を使う",
+        "本人の実感である出社日の帰宅後の疲れから書き始める"
+      ],
+      "must_not": [
+        "本文へ先に足して後から正当化する",
+        "疲労の原因、改善策、在宅勤務日の感情を追加する",
+        "Provenance Tableを最終回答へ出す"
+      ],
+      "rubric": [
+        "F1",
+        "V1",
+        "P1"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "correction_type": "post-publication-manual-review",
+  "original_automated_score": {
+    "control": "0/10",
+    "skill": "10/10"
+  },
+  "corrected_score": {
+    "control": "0/10",
+    "skill": "9/10"
+  },
+  "corrected_comparison": {
+    "improved": 2,
+    "same": 0,
+    "regressed": 0,
+    "not_comparable": 0
+  },
+  "corrections": [
+    {
+      "key": "p30-one-sided-material-stays-one-sided|skill|3",
+      "original_overall": "pass",
+      "corrected_overall": "fail",
+      "failed_rubrics": [
+        "F1",
+        "M1"
+      ],
+      "reason": "材料になかった肯定側の評価軸を否定形で追加した。"
+    }
+  ],
+  "reproducibility_note": "manifest.jsonのgit_dirty_at_startはtrueであり、git_commitは未コミットスナップショットの基準コミットを示す。実際の内容はmanifest.jsonのSHA-256で識別する。",
+  "raw_data_policy": "grading.jsonlとsummary.jsonは元の自動採点記録として変更せず保持する。このファイルを公開後訂正の正本とする。"
+}

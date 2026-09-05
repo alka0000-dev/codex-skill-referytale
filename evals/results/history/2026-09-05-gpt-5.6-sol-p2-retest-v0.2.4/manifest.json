@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "run_id": "e6234b7295f539e7",
+  "created_at": "2026-09-05T04:13:45.474Z",
+  "harness_version": "4",
+  "eval_version": "0.2.4",
+  "eval_file": "evals/evals.json",
+  "case_ids": [
+    "p05-persona-overrides-generic-style",
+    "p06-established-term-is-allowed",
+    "p17-creative-task-can-invent",
+    "p18-provenance-table-mode",
+    "p19-verified-secondary-source-is-allowed",
+    "p21-provenance-table-does-not-create-untracked-file",
+    "p31-diagnostic-needs-material"
+  ],
+  "model": "gpt-5.6-sol",
+  "grader_model": "gpt-5.6-sol",
+  "reasoning_effort": "low",
+  "conditions": [
+    "control",
+    "skill"
+  ],
+  "repetitions": 1,
+  "planned_generations": 14,
+  "concurrency": 4,
+  "grader_batch_size": 8,
+  "grader_retries": 1,
+  "timeout_seconds": 600,
+  "codex_home_isolated": true,
+  "codex_cli_version": "codex-cli 0.153.1",
+  "git_commit": "78d85d60901446e0f086b03ee50db0cac06ec17e",
+  "git_dirty_at_start": false,
+  "runner_sha256": "286b457835fbae74761e01a4cc7e30efdfbadbe4dd5771bded061ff2a225f57a",
+  "skill_sha256": "56be84c6518bcad0199b82920fc4d80664daf803518285d3808f63466804f277",
+  "reference_sha256": {
+    "references/naturalness-review.md": "22730be61770a4378370a1c221c8afcb611a48d4394cc7b5e8aaa8a2a29416e6",
+    "references/provenance-policy.md": "d4f0c5a1a473d61d1f0c4afb429b173b0e1f093bd0b326676d8a999a39ac1c67",
+    "references/skill-composition.md": "baa47320185cc440dc58c4bb19a5d869e77b973f16e25ce773fae91b8aed2a7d",
+    "references/voice-profile-template.md": "464e3c884e3f1a3e9e724575953f16e73af144401ec75d55bcd82f41c982caf4"
+  },
+  "evaluation_snapshot_file": "evaluation.json",
+  "evaluation_snapshot_sha256": "de63161a62875df94dbc5ed14aba24ef4bd79d014ca4e9d8b180a4bac885a62c",
+  "authentication_mode": "linked-existing-auth",
+  "generation_completed_at": "2026-09-05T04:14:26.518Z",
+  "generation_successes": 14,
+  "generation_errors": 0,
+  "grader_authentication_mode": "linked-existing-auth",
+  "grading_completed_at": "2026-09-05T04:15:22.476Z",
+  "graded_outputs": 14,
+  "report_completed_at": "2026-09-05T04:15:22.479Z"
+}

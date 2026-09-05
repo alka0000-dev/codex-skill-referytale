@@ -1,2 +1,2 @@
-# Temporary semantic preflight artifacts
-.codex/referent-tables/
+.agent/*
+.codex/*

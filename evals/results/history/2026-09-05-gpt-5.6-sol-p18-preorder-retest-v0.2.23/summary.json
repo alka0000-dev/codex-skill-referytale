@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "eval_version": "0.2.23",
+  "model": "gpt-5.6-sol",
+  "grader_model": "gpt-5.6-sol",
+  "reasoning_effort": "low",
+  "condition_summary": {
+    "skill": {
+      "planned": 3,
+      "attempted": 3,
+      "generated": 3,
+      "generation_errors": 0,
+      "missing_generations": 0,
+      "graded": 3,
+      "ungraded": 0,
+      "pass": 3,
+      "fail": 0
+    }
+  },
+  "rubric_summary": {
+    "skill": {
+      "F1": {
+        "pass": 3,
+        "total": 3
+      },
+      "V1": {
+        "pass": 3,
+        "total": 3
+      },
+      "P1": {
+        "pass": 3,
+        "total": 3
+      }
+    }
+  },
+  "comparison_summary": {
+    "improved": 0,
+    "same": 0,
+    "regressed": 0,
+    "not_comparable": 1
+  },
+  "cases": [
+    {
+      "case_id": "p18-provenance-table-mode",
+      "type": "strict-write",
+      "rubrics": [
+        "F1",
+        "V1",
+        "P1"
+      ],
+      "conditions": {
+        "skill": {
+          "pass": 3,
+          "fail": 0,
+          "error": 0,
+          "missing": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "not-comparable"
+    }
+  ]
+}

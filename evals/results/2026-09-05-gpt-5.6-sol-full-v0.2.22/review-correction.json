@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "correction_type": "post-publication-content-review",
+  "original_automated_score": {
+    "control": "16/38",
+    "skill": "38/38"
+  },
+  "corrected_score": {
+    "control": "15/38",
+    "skill": "37/38"
+  },
+  "corrected_comparison": {
+    "improved": 23,
+    "same": 14,
+    "regressed": 1,
+    "not_comparable": 0
+  },
+  "corrections": [
+    {
+      "key": "p18-provenance-table-mode|skill|1",
+      "original_overall": "pass",
+      "corrected_overall": "fail",
+      "failed_rubrics": [
+        "P1"
+      ],
+      "reason": "人物Skillは本人の実感から書き始めるよう求めているが、出力は出社頻度から始まり、疲労の実感を後置している。"
+    },
+    {
+      "key": "p26-negated-expectation-needs-source|control|1",
+      "original_overall": "pass",
+      "corrected_overall": "fail",
+      "failed_rubrics": [
+        "F1",
+        "M1"
+      ],
+      "reason": "入力にある『通知を確認してしまい』という動作を『通知に気を取られ』という心理状態へ置き換え、通知を確認した事実を保持していない。"
+    }
+  ],
+  "raw_data_policy": "grading.jsonlとsummary.jsonは元の自動採点記録として変更せず保持する。このファイルを公開後訂正の正本とする。"
+}

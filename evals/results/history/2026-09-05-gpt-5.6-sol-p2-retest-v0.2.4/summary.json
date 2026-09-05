@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "eval_version": "0.2.4",
+  "model": "gpt-5.6-sol",
+  "grader_model": "gpt-5.6-sol",
+  "reasoning_effort": "low",
+  "condition_summary": {
+    "control": {
+      "planned": 7,
+      "generated": 7,
+      "generation_errors": 0,
+      "graded": 7,
+      "ungraded": 0,
+      "pass": 2,
+      "fail": 5
+    },
+    "skill": {
+      "planned": 7,
+      "generated": 7,
+      "generation_errors": 0,
+      "graded": 7,
+      "ungraded": 0,
+      "pass": 7,
+      "fail": 0
+    }
+  },
+  "rubric_summary": {
+    "control": {
+      "F1": {
+        "pass": 0,
+        "total": 3
+      },
+      "F2": {
+        "pass": 1,
+        "total": 1
+      },
+      "V1": {
+        "pass": 2,
+        "total": 3
+      },
+      "P1": {
+        "pass": 3,
+        "total": 3
+      },
+      "M1": {
+        "pass": 0,
+        "total": 1
+      },
+      "A1": {
+        "pass": 1,
+        "total": 1
+      },
+      "D1": {
+        "pass": 0,
+        "total": 1
+      }
+    },
+    "skill": {
+      "F1": {
+        "pass": 3,
+        "total": 3
+      },
+      "F2": {
+        "pass": 1,
+        "total": 1
+      },
+      "V1": {
+        "pass": 3,
+        "total": 3
+      },
+      "P1": {
+        "pass": 3,
+        "total": 3
+      },
+      "M1": {
+        "pass": 1,
+        "total": 1
+      },
+      "A1": {
+        "pass": 1,
+        "total": 1
+      },
+      "D1": {
+        "pass": 1,
+        "total": 1
+      }
+    }
+  },
+  "comparison_summary": {
+    "improved": 5,
+    "same": 2,
+    "regressed": 0,
+    "not_comparable": 0
+  },
+  "cases": [
+    {
+      "case_id": "p05-persona-overrides-generic-style",
+      "type": "composition",
+      "rubrics": [
+        "P1"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 1,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 1,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "same"
+    },
+    {
+      "case_id": "p06-established-term-is-allowed",
+      "type": "write",
+      "rubrics": [
+        "V1"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 0,
+          "fail": 1,
+          "error": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 1,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "improved"
+    },
+    {
+      "case_id": "p17-creative-task-can-invent",
+      "type": "write",
+      "rubrics": [
+        "V1"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 1,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 1,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "same"
+    },
+    {
+      "case_id": "p18-provenance-table-mode",
+      "type": "strict-write",
+      "rubrics": [
+        "F1",
+        "V1",
+        "P1"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 0,
+          "fail": 1,
+          "error": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 1,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "improved"
+    },
+    {
+      "case_id": "p19-verified-secondary-source-is-allowed",
+      "type": "write",
+      "rubrics": [
+        "F1",
+        "M1"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 0,
+          "fail": 1,
+          "error": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 1,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "improved"
+    },
+    {
+      "case_id": "p21-provenance-table-does-not-create-untracked-file",
+      "type": "strict-write",
+      "rubrics": [
+        "F1",
+        "P1",
+        "A1"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 0,
+          "fail": 1,
+          "error": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 1,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "improved"
+    },
+    {
+      "case_id": "p31-diagnostic-needs-material",
+      "type": "diagnostic",
+      "rubrics": [
+        "D1",
+        "F2"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 0,
+          "fail": 1,
+          "error": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 1,
+          "fail": 0,
+          "error": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "improved"
+    }
+  ]
+}

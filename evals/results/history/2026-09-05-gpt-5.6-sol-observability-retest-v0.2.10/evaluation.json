@@ -1,0 +1,66 @@
+{
+  "version": "0.2.10",
+  "rubrics": {
+    "F1": {
+      "name": "Source fidelity",
+      "pass_condition": "材料として指定された入力・資料・固有Skillにない事実、経験、発言、感情、原因、助言を追加しない"
+    },
+    "V2": {
+      "name": "User term retention",
+      "pass_condition": "ユーザー由来の独自表現を不用意に消さない"
+    },
+    "P1": {
+      "name": "Skill composition",
+      "pass_condition": "固有Skillの具体ルールを汎用文体より優先する"
+    },
+    "Q2": {
+      "name": "No over-structuring",
+      "pass_condition": "個人の体験を勝手に分類・教訓・一般論へ変えない"
+    },
+    "M1": {
+      "name": "Meaning preservation",
+      "pass_condition": "原素材の意味・強度・不確実性を保つ"
+    }
+  },
+  "cases": [
+    {
+      "id": "p11-user-term-retention-rewrite",
+      "type": "rewrite",
+      "input": "私は『風呂場にある死体』という自虐的な比喩をあえて残したい。次の文章を自然に整えて。\n\n残業後に湯船で眠ってしまった。目を覚ました私は、風呂場にある死体みたいだった。翌朝もまだ疲れていた。",
+      "expected": [
+        "『風呂場にある死体』という比喩を保持したリライトを返す",
+        "残業後に湯船で眠り、目を覚ました自分への比喩であり、翌朝も疲れていたという内容を保つ"
+      ],
+      "must_not": [
+        "比喩を一般的な表現へ勝手に置換する",
+        "文章がないとして追加材料を求める"
+      ],
+      "rubric": [
+        "V2",
+        "M1"
+      ]
+    },
+    {
+      "id": "p12-persona-structure-overrides-generic",
+      "type": "composition",
+      "context": "人物Skill: 『記事の最後に普遍的な教訓へまとめない。本人の実感か余韻で終える。』",
+      "input": "メモ: オンライン発表の冒頭でマイクを入れ忘れ、30秒後に自分で気づいた。この人物Skillとreferytaleを使って、失敗談の記事の結びを2文で書いて。",
+      "expected": [
+        "人物Skillを優先する",
+        "マイクを入れ忘れ、30秒後に自分で気づいたという材料の範囲で結ぶ",
+        "記事の結びをちょうど2文で返す"
+      ],
+      "must_not": [
+        "『失敗は成長の糧です』のように普遍化する",
+        "参加者の反応、謝罪、発表後の出来事を追加する",
+        "1文または3文以上で返す"
+      ],
+      "rubric": [
+        "F1",
+        "P1",
+        "Q2",
+        "M1"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "run_id": "a419e208ff47e620",
+  "created_at": "2026-09-05T03:08:53.182Z",
+  "harness_version": "3",
+  "eval_version": "0.2.2",
+  "eval_file": "evals/evals.json",
+  "case_ids": [
+    "p02-no-unsolicited-coinage",
+    "p03-no-invented-scene",
+    "p09-do-not-universalize-personal-story",
+    "p19-verified-secondary-source-is-allowed",
+    "p25-sparse-material-does-not-create-backstory"
+  ],
+  "model": "gpt-5.6-sol",
+  "grader_model": "gpt-5.6-sol",
+  "reasoning_effort": "low",
+  "conditions": [
+    "control",
+    "skill"
+  ],
+  "repetitions": 3,
+  "planned_generations": 30,
+  "concurrency": 4,
+  "grader_batch_size": 8,
+  "codex_home_isolated": true,
+  "codex_cli_version": "codex-cli 0.153.1",
+  "git_commit": "66500049aa5a4f7a0cf51d0508b1d11089179d0f",
+  "git_dirty_at_start": true,
+  "runner_sha256": "a0b97da376f24498cf8dfe5ec167d8a9d1d7a738dac54d0e24267b7ea3835ad7",
+  "skill_sha256": "c287292c1b684795241afc4f357f4a00ef7268f40ef051d2ce92a14d3bd83a66",
+  "reference_sha256": {
+    "references/naturalness-review.md": "a8addaa5135be1520c0ad07ef915dfc2044108843ec4a8b826bdc71136f307d5",
+    "references/provenance-policy.md": "2df7489d9f4d31554177c70e7881dbf06c8d07465d3241ee2926ef14ee90e30a",
+    "references/skill-composition.md": "baa47320185cc440dc58c4bb19a5d869e77b973f16e25ce773fae91b8aed2a7d",
+    "references/voice-profile-template.md": "464e3c884e3f1a3e9e724575953f16e73af144401ec75d55bcd82f41c982caf4"
+  },
+  "evaluation_snapshot_file": "evaluation.json",
+  "evaluation_snapshot_sha256": "0e0b8612bdabee23b10fb86f164692c43e3d1adcc40fad46f2a79143f3bd6d6d",
+  "authentication_mode": "linked-existing-auth",
+  "generation_completed_at": "2026-09-05T03:10:25.021Z",
+  "generation_successes": 30,
+  "generation_errors": 0,
+  "grader_authentication_mode": "linked-existing-auth",
+  "grading_completed_at": "2026-09-05T03:13:04.180Z",
+  "graded_outputs": 30,
+  "report_completed_at": "2026-09-05T03:13:04.184Z"
+}

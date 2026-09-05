@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "eval_version": "0.2.23",
+  "model": "gpt-5.6-sol",
+  "grader_model": "gpt-5.6-sol",
+  "reasoning_effort": "low",
+  "condition_summary": {
+    "control": {
+      "planned": 3,
+      "attempted": 3,
+      "generated": 3,
+      "generation_errors": 0,
+      "missing_generations": 0,
+      "graded": 3,
+      "ungraded": 0,
+      "pass": 0,
+      "fail": 3
+    },
+    "skill": {
+      "planned": 3,
+      "attempted": 3,
+      "generated": 3,
+      "generation_errors": 0,
+      "missing_generations": 0,
+      "graded": 3,
+      "ungraded": 0,
+      "pass": 1,
+      "fail": 2
+    }
+  },
+  "rubric_summary": {
+    "control": {
+      "F1": {
+        "pass": 0,
+        "total": 3
+      },
+      "V1": {
+        "pass": 3,
+        "total": 3
+      },
+      "P1": {
+        "pass": 1,
+        "total": 3
+      }
+    },
+    "skill": {
+      "F1": {
+        "pass": 3,
+        "total": 3
+      },
+      "V1": {
+        "pass": 3,
+        "total": 3
+      },
+      "P1": {
+        "pass": 1,
+        "total": 3
+      }
+    }
+  },
+  "comparison_summary": {
+    "improved": 1,
+    "same": 0,
+    "regressed": 0,
+    "not_comparable": 0
+  },
+  "cases": [
+    {
+      "case_id": "p18-provenance-table-mode",
+      "type": "strict-write",
+      "rubrics": [
+        "F1",
+        "V1",
+        "P1"
+      ],
+      "conditions": {
+        "control": {
+          "pass": 0,
+          "fail": 3,
+          "error": 0,
+          "missing": 0,
+          "ungraded": 0
+        },
+        "skill": {
+          "pass": 1,
+          "fail": 2,
+          "error": 0,
+          "missing": 0,
+          "ungraded": 0
+        }
+      },
+      "comparison": "improved"
+    }
+  ]
+}

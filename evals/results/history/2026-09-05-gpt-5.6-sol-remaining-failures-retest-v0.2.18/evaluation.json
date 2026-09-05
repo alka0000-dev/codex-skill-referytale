@@ -1,0 +1,99 @@
+{
+  "version": "0.2.18",
+  "rubrics": {
+    "F1": {
+      "name": "Source fidelity",
+      "pass_condition": "材料として指定された入力・資料・固有Skillにない事実、経験、発言、感情、原因、助言を追加しない"
+    },
+    "F2": {
+      "name": "Uncertainty",
+      "pass_condition": "未確認事項を確定事項へ変えない"
+    },
+    "P1": {
+      "name": "Skill composition",
+      "pass_condition": "固有Skillの具体ルールを汎用文体より優先する"
+    },
+    "Q2": {
+      "name": "No over-structuring",
+      "pass_condition": "個人の体験を勝手に分類・教訓・一般論へ変えない"
+    },
+    "M1": {
+      "name": "Meaning preservation",
+      "pass_condition": "原素材の意味・強度・不確実性を保つ"
+    },
+    "D1": {
+      "name": "Diagnostic evidence",
+      "pass_condition": "各軸をその軸に必要な材料の有無に基づいて判定し、不足時は判定不能と対応する必要材料を示す"
+    }
+  },
+  "cases": [
+    {
+      "id": "p22-persona-style-without-invented-scene",
+      "type": "composition",
+      "context": "人物Skill: 『一人称は「わたし」。少し自虐的だが、最後に教訓へまとめない。短い文と長い文を混ぜる。』",
+      "input": "メモ: 新しい職場で初日に道に迷った。受付に着いたのは開始5分前だった。この人物Skillとメモを使って、短い記事の導入を書いて。",
+      "expected": [
+        "一人称「わたし」と自虐的な温度を使う",
+        "短い文と長い文を混ぜる",
+        "道に迷ったことと開始5分前という事実を保持する",
+        "教訓へ一般化しない"
+      ],
+      "must_not": [
+        "迷った場所や経路を補う",
+        "誰かに道を聞いたことにする",
+        "焦りや恥ずかしさなどの感情を補う",
+        "人物Skillに合わせるため新しい出来事を作る"
+      ],
+      "rubric": [
+        "F1",
+        "P1",
+        "Q2",
+        "M1"
+      ]
+    },
+    {
+      "id": "p31-diagnostic-needs-material",
+      "type": "diagnostic",
+      "input": "この文章がAIっぽくなく、自分らしさを保てているか、4軸で診断してください。",
+      "expected": [
+        "診断対象の文章がないため、4軸すべてを判定不能（材料不足）とする",
+        "Source Fidelityには診断対象の文章と照合元のメモ・資料が必要だと示す",
+        "Vocabulary Provenanceには診断対象の文章とユーザー・プロジェクト・参照資料で定義された語彙が必要だと示す",
+        "Voice Fidelityには診断対象の文章と、固有Skillまたは文体サンプルの少なくとも一方が必要だと示す。固有Skillと文体サンプルの両方の列挙は必須としない",
+        "Writing Qualityには診断対象の文章が必要だと示す",
+        "本文を新しく作ったり書き換えたりしない"
+      ],
+      "must_not": [
+        "根拠なく4軸を問題なしと判定する",
+        "書き手の人物像や文体を推測する",
+        "診断対象となる文章を作り足す"
+      ],
+      "rubric": [
+        "D1",
+        "F2"
+      ]
+    },
+    {
+      "id": "p33-diagnostic-partial-material",
+      "type": "diagnostic",
+      "input": "次の文章を4軸で診断してください。書き換えは不要です。\n\n対象文: 週末に本棚を整理した。読みかけの本が三冊見つかった。\n元メモ: 週末に本棚を整理した。読みかけの本が三冊見つかった。\n固有Skillや過去の文体サンプルはありません。",
+      "expected": [
+        "Source Fidelityは対象文と元メモを照合して判定する",
+        "Vocabulary Provenanceは対象文と提示語彙を照合して判定する",
+        "Voice Fidelityだけを判定不能（材料不足）とし、固有Skillまたは文体サンプルが必要だと示す",
+        "Writing Qualityは対象文から判定する",
+        "本文を書き換えない"
+      ],
+      "must_not": [
+        "固有Skillや文体サンプルがないのにVoice Fidelityを問題なしと判定する",
+        "一軸の材料不足を理由に四軸すべてを判定不能とする",
+        "書き手の人物像や文体を推測する",
+        "診断対象の文章を書き換える"
+      ],
+      "rubric": [
+        "D1",
+        "F2"
+      ]
+    }
+  ]
+}
