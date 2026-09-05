@@ -1466,7 +1466,7 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
     '',
   );
 
-  return `${lines.join('\n')}\n`;
+  return lines.join('\n');
 }
 
 async function runReportStage(evaluation, outputDirectory, manifest) {

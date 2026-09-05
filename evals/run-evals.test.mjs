@@ -344,6 +344,8 @@ test('buildMarkdownReport describes subset scope and actual repetitions', () => 
   assert.match(report, /隔離`CODEX_HOME`/);
   assert.match(report, /採点は`actual-grader`の別セッション/);
   assert.doesNotMatch(report, /28ケース/);
+  assert.match(report, /一般化できない\n$/);
+  assert.doesNotMatch(report, /\n\n$/);
 });
 
 test('buildMarkdownReport discloses a non-isolated CODEX_HOME', () => {
