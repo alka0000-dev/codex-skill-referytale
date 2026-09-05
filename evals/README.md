@@ -14,7 +14,7 @@
 node evals/run-evals.mjs --dry-run
 ```
 
-全33ケースをGPT-5.6-sol・lowで、Skillなし／あり各1回実行し、条件名を伏せて採点してレポートを作る場合:
+全34ケースをGPT-5.6-sol・lowで、Skillなし／あり各1回実行し、条件名を伏せて採点してレポートを作る場合:
 
 ```shell
 node evals/run-evals.mjs \
@@ -26,7 +26,7 @@ node evals/run-evals.mjs \
   --concurrency 4
 ```
 
-この設定では生成66回と、既定で最大8出力ずつの採点9回を行う。中断した場合は、同じ出力先を指定して`--resume`を付けると、成功済みの生成と採点を再利用する。
+この設定では生成68回と、既定で最大8出力ずつの採点9回を行う。中断した場合は、同じ出力先を指定して`--resume`を付けると、成功済みの生成と採点を再利用する。再開できるのは、対象ケース、条件、反復回数、生成・採点モデル、reasoning effort、ランナー、Skill、参照資料、評価スナップショットなど、実験条件と内容ハッシュが一致する場合だけである。どれかを変えた場合は新しい出力先で実行する。
 
 ```shell
 node evals/run-evals.mjs \
@@ -36,7 +36,7 @@ node evals/run-evals.mjs \
 
 `--stage generate`、`--stage grade`、`--stage report`で工程を分けられる。`--cases p02-no-unsolicited-coinage,p25-sparse-material-does-not-create-backstory`のように対象を絞ることもできる。全オプションは`node evals/run-evals.mjs --help`で確認する。
 
-各生成はOSの一時ディレクトリに作った別々の作業領域で行う。両条件に同じ共通指示、入力、fixtureを与え、Skillあり条件だけに`SKILL.md`と`references/`を配置する。端末側のSkill探索、Skill検索、プラグイン、ユーザー設定は無効化する。生成担当には`expected`、`must_not`、rubricを渡さない。
+各生成はOSの一時ディレクトリに作った別々の作業領域で行う。両条件に同じ共通指示、入力、fixtureを与え、Skillあり条件だけに`SKILL.md`と`references/`を配置する。端末側のSkill探索、Skill検索、プラグイン、ユーザー設定は無効化する。生成担当には`expected`、`must_not`、rubricを渡さない。採点担当には、出力と最終ファイル差分に加えて、fixtureファイルの初期内容と実行後の内容を渡す。
 
 ユーザー階層の`AGENTS.md`やSkillが評価へ混ざらないよう、既定では実行中だけ使う隔離`CODEX_HOME`を一時ディレクトリへ作る。認証は、プロセスに`CODEX_API_KEY`が設定されていればそれを使い、それ以外では既存の`auth.json`をコピーせずファイルリンクで参照する。リンクを作れない環境では、認証情報を貼り付けず、プロセス単位の`CODEX_API_KEY`を設定する。`--allow-user-codex-home`で通常の`CODEX_HOME`も使えるが、ユーザー指示が出力へ影響するため正式比較には使わない。
 
@@ -44,13 +44,13 @@ node evals/run-evals.mjs \
 
 - `evaluation.json`: 実行時に使った対象ケースとrubricのスナップショット
 - `manifest.json`: モデル、reasoning effort、対象ケース、Gitコミット、評価定義・ランナー・Skill・参照資料のSHA-256
-- `generations.jsonl`: 条件ごとの生の最終出力、トークン使用量、実行時間、最終ファイル差分
+- `generations.jsonl`: 条件ごとの生の最終出力、トークン使用量、実行時間、最終ファイル差分、fixtureの初期・最終内容
 - `grading.jsonl`: 条件名を伏せた別セッションによるrubric単位の判定
 - `grading-batches.jsonl`: 採点バッチの実行情報とトークン使用量
 - `summary.json`: 条件別、rubric別、ケース別の集計値
 - `report.md`: 公開用の比較レポート
 
-採点は実行を再現しやすくするため自動化しているが、人手評価の代わりではない。Skill本文を修正する前に、不合格ケースの実出力を原素材へ照合し、同じ失敗が再現するかを追加実行で確認する。
+採点は実行を再現しやすくするため自動化しているが、人手評価の代わりではない。合格率は予定した生成数を分母にし、生成失敗も不合格相当として比較へ含める。生成済みで未採点の出力があるケースは比較不能とする。Skill本文を修正する前に、不合格ケースの実出力を原素材へ照合し、同じ失敗が再現するかを追加実行で確認する。
 
 ## 公開している実行結果
 
@@ -74,6 +74,7 @@ node evals/run-evals.mjs \
 | M1 | Meaning preservation | 原素材の意味・強度・不確実性を保つ |
 | A1 | 一時成果物の扱い | 除外設定とユーザーの許可を守り、未追跡ファイルや無断の設定変更を残さない |
 | N1 | Out-of-scope non-interference | 対象外の依頼をそのまま完了し、文章改善用の監査・造語・人物表現規則を持ち込まない |
+| D1 | Diagnostic evidence | 診断材料がない軸を問題なしと断定せず、判定不能と必要な材料を示す |
 
 ## Provenance Table モード
 
