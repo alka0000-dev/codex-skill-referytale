@@ -31,7 +31,7 @@ const DEFAULT_MODEL = 'gpt-5.6-sol';
 const CONDITIONS = new Set(['control', 'skill']);
 const STAGES = new Set(['generate', 'grade', 'report', 'all']);
 const REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
-const HARNESS_VERSION = '9';
+const HARNESS_VERSION = '10';
 const FORCE_KILL_GRACE_MS = 1000;
 
 const COMMON_AGENTS = `# Isolated evaluation workspace
@@ -215,9 +215,6 @@ export function parseArguments(argv) {
     `${today}-${sanitizePathSegment(options.model)}-full`,
   );
   options.output = path.resolve(options.output);
-  if (isPathWithin(REFERENCES_ROOT, options.output)) {
-    throw new Error('--output must be outside the references directory.');
-  }
 
   return options;
 }
@@ -294,11 +291,23 @@ export function validateEvaluation(evaluation) {
       }
     }
 
+    const fixturePaths = new Map();
     for (const fixtureFile of evaluationCase.fixture?.files ?? []) {
       if (!isSafeRelativePath(fixtureFile.path)) {
         errors.push(`${label} has an unsafe fixture path: ${fixtureFile.path}`);
-      } else if (isReservedFixturePath(fixtureFile.path)) {
-        errors.push(`${label} has a reserved fixture path: ${fixtureFile.path}`);
+      } else {
+        const normalizedFixturePath = normalizeFixturePath(fixtureFile.path);
+        const previousFixturePath = fixturePaths.get(normalizedFixturePath);
+        if (previousFixturePath !== undefined) {
+          errors.push(
+            `${label} has duplicate fixture paths: ${previousFixturePath} and ${fixtureFile.path}`,
+          );
+        } else {
+          fixturePaths.set(normalizedFixturePath, fixtureFile.path);
+        }
+        if (isReservedFixturePath(normalizedFixturePath)) {
+          errors.push(`${label} has a reserved fixture path: ${fixtureFile.path}`);
+        }
       }
       if (typeof fixtureFile.content !== 'string') {
         errors.push(`${label} fixture content must be a string: ${fixtureFile.path}`);
@@ -353,22 +362,58 @@ function isSafeRelativePath(relativePath) {
   return normalized !== '..' && !normalized.startsWith(`..${path.sep}`);
 }
 
-function isReservedFixturePath(relativePath) {
-  const normalized = path.posix.normalize(relativePath.replaceAll('\\', '/'))
+function normalizeFixturePath(relativePath) {
+  return path.posix.normalize(relativePath.replaceAll('\\', '/'))
     .split('/')
     .map((segment) => segment.replace(/[. ]+$/u, ''))
     .join('/')
     .toLowerCase();
-  return normalized === 'agents.md'
-    || normalized.startsWith('agents.md/')
-    || normalized === 'references'
-    || normalized.startsWith('references/');
+}
+
+function isReservedFixturePath(normalizedFixturePath) {
+  return normalizedFixturePath === 'agents.md'
+    || normalizedFixturePath.startsWith('agents.md/')
+    || normalizedFixturePath === 'references'
+    || normalizedFixturePath.startsWith('references/');
 }
 
 function isPathWithin(root, candidate) {
   const relative = path.relative(path.resolve(root), path.resolve(candidate));
   return relative === ''
     || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+async function resolvePathWithExistingAncestor(candidate) {
+  let existingAncestor = path.resolve(candidate);
+  const missingSegments = [];
+
+  while (true) {
+    try {
+      const resolvedAncestor = await realpath(existingAncestor);
+      return path.resolve(resolvedAncestor, ...missingSegments.reverse());
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        throw error;
+      }
+
+      const parent = path.dirname(existingAncestor);
+      if (parent === existingAncestor) {
+        throw error;
+      }
+      missingSegments.push(path.basename(existingAncestor));
+      existingAncestor = parent;
+    }
+  }
+}
+
+export async function assertOutputOutsideReferences(outputDirectory) {
+  const [resolvedReferences, resolvedOutput] = await Promise.all([
+    realpath(REFERENCES_ROOT),
+    resolvePathWithExistingAncestor(outputDirectory),
+  ]);
+  if (isPathWithin(resolvedReferences, resolvedOutput)) {
+    throw new Error('--output must be outside the references directory.');
+  }
 }
 
 function resolveInside(root, relativePath) {
@@ -1580,6 +1625,12 @@ function formatCaseCondition(value) {
   return suffix.length > 0 ? `${main}; ${suffix.join(', ')}` : main;
 }
 
+function markdownTableCell(value) {
+  return String(value)
+    .replace(/\r\n?|\n/gu, '<br>')
+    .replaceAll('|', '&#124;');
+}
+
 function generationMethodDescription(manifest) {
   const environment = manifest.codex_home_isolated
     ? '各生成は別の一時作業フォルダと隔離`CODEX_HOME`で実行した。端末にインストール済みのSkill探索、Skill検索、プラグイン、ユーザー設定は無効化した。'
@@ -1672,7 +1723,7 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
   for (const item of summary.cases) {
     const conditionCells = manifest.conditions.map((condition) => formatCaseCondition(item.conditions[condition]));
     lines.push(
-      `| ${item.case_id} | ${item.type} | ${item.rubrics.join(', ')} | ${conditionCells.join(' | ')}${isPaired ? ` | ${item.comparison}` : ''} |`,
+      `| ${markdownTableCell(item.case_id)} | ${markdownTableCell(item.type)} | ${item.rubrics.map(markdownTableCell).join(', ')} | ${conditionCells.join(' | ')}${isPaired ? ` | ${item.comparison}` : ''} |`,
     );
   }
 
@@ -1685,15 +1736,18 @@ export function buildMarkdownReport(evaluation, manifest, summary, gradeRecords)
       const value = summary.rubric_summary[condition]?.[rubricId];
       return value ? formatRate(value.pass, value.total) : '—';
     });
-    lines.push(`| ${rubricId} — ${rubric.name} | ${cells.join(' | ')} |`);
+    lines.push(`| ${markdownTableCell(`${rubricId} — ${rubric.name}`)} | ${cells.join(' | ')} |`);
   }
 
   const failures = gradeRecords
     .filter((record) => record.overall === 'fail')
     .sort((left, right) => left.key.localeCompare(right.key));
   lines.push('', '## 不合格の内訳', '');
-  if (ungradedCount > 0) {
-    lines.push('未採点の出力があるため、不合格の有無は未確定である。');
+  if (missingGenerationCount > 0 || ungradedCount > 0) {
+    const incompleteKind = missingGenerationCount > 0 && ungradedCount > 0
+      ? '未生成または未採点'
+      : missingGenerationCount > 0 ? '未生成' : '未採点';
+    lines.push(`${incompleteKind}の出力があるため、不合格の有無は未確定である。`);
   } else if (failures.length === 0) {
     lines.push('不合格はなかった。');
   } else {
@@ -1835,6 +1889,8 @@ async function main() {
     showHelp();
     return;
   }
+
+  await assertOutputOutsideReferences(options.output);
 
   const evaluation = await readJson(path.join(EVALS_DIRECTORY, 'evals.json'));
   const validationErrors = validateEvaluation(evaluation);

@@ -3,8 +3,10 @@ import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
+  assertOutputOutsideReferences,
   assertResumeManifestMatches,
   buildGraderPrompt,
   buildMarkdownReport,
@@ -42,6 +44,8 @@ const evaluation = {
   ],
 };
 
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
 test('parseArguments builds the paired one-run default', () => {
   const options = parseArguments(['--dry-run']);
 
@@ -71,11 +75,29 @@ test('parseArguments allows zero grader retries', () => {
   );
 });
 
-test('parseArguments rejects result output inside references', () => {
-  assert.throws(
-    () => parseArguments(['--output', path.join('references', 'nested-result')]),
-    /outside the references directory/,
-  );
+test('assertOutputOutsideReferences rejects direct and symlinked reference paths', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'referytale-output-test-'));
+  const alias = path.join(directory, 'reference-alias');
+  const references = path.join(repositoryRoot, 'references');
+
+  try {
+    await symlink(references, alias, process.platform === 'win32' ? 'junction' : 'dir');
+
+    await assert.rejects(
+      () => assertOutputOutsideReferences(path.join(references, 'direct-result')),
+      /outside the references directory/,
+    );
+    await assert.rejects(
+      () => assertOutputOutsideReferences(path.join(alias, 'linked-result')),
+      /outside the references directory/,
+    );
+    await assert.doesNotReject(
+      () => assertOutputOutsideReferences(path.join(directory, 'normal-result')),
+    );
+  } finally {
+    await rm(alias, { force: true });
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('validateEvaluation rejects unknown rubrics and duplicate cases', () => {
@@ -115,6 +137,20 @@ test('validateEvaluation reserves harness instruction paths', () => {
 
   assert.ok(errors.some((error) => error.includes('reserved fixture path: AGENTS.md')));
   assert.ok(errors.some((error) => error.includes('reserved fixture path: references/policy.md')));
+});
+
+test('validateEvaluation rejects normalized duplicate fixture paths', () => {
+  const invalid = structuredClone(evaluation);
+  invalid.cases[0].fixture = {
+    files: [
+      { path: 'memo.txt', content: 'first' },
+      { path: './MEMO.txt', content: 'second' },
+    ],
+  };
+
+  const errors = validateEvaluation(invalid);
+
+  assert.ok(errors.some((error) => error.includes('duplicate fixture paths')));
 });
 
 test('buildGenerationPlan creates every case-condition-repetition combination', () => {
@@ -660,7 +696,49 @@ test('summarizeResults marks absent generation records as missing and non-compar
 
   const report = buildMarkdownReport(evaluation, manifest, summary, grades);
   assert.match(report, /実行状態: 未完了（未生成1件）/);
+  assert.match(report, /不合格の有無は未確定/);
+  assert.doesNotMatch(report, /不合格はなかった/);
   assert.doesNotMatch(report, /合格率差:/);
+});
+
+test('buildMarkdownReport escapes evaluation fields in tables', () => {
+  const manifest = {
+    created_at: '2026-09-05T00:00:00.000Z',
+    eval_version: 'test',
+    model: 'model',
+    grader_model: 'grader',
+    reasoning_effort: 'low',
+    conditions: ['control'],
+    repetitions: 1,
+    case_ids: ['case|1\ncontinued'],
+    planned_generations: 1,
+    codex_home_isolated: true,
+    git_dirty_at_start: false,
+    skill_sha256: 'hash',
+  };
+  const expandedEvaluation = {
+    ...evaluation,
+    rubrics: { F1: { name: 'Source | fidelity\nname', pass_condition: 'No additions' } },
+  };
+  const summary = {
+    condition_summary: {
+      control: { planned: 1, graded: 1, ungraded: 0, pass: 1, generation_errors: 0 },
+    },
+    comparison_summary: { improved: 0, same: 0, regressed: 0, not_comparable: 1 },
+    rubric_summary: { control: { F1: { pass: 1, total: 1 } } },
+    cases: [{
+      case_id: 'case|1\ncontinued',
+      type: 'write|rewrite',
+      rubrics: ['F1'],
+      conditions: { control: { pass: 1, fail: 0, error: 0, missing: 0, ungraded: 0 } },
+      comparison: 'not-comparable',
+    }],
+  };
+
+  const report = buildMarkdownReport(expandedEvaluation, manifest, summary, []);
+
+  assert.match(report, /\| case&#124;1<br>continued \| write&#124;rewrite \| F1 \| 1\/1 \|/);
+  assert.match(report, /\| F1 — Source &#124; fidelity<br>name \| 1\/1 \(100\.00%\) \|/);
 });
 
 test('buildMarkdownReport describes subset scope and actual repetitions', () => {
